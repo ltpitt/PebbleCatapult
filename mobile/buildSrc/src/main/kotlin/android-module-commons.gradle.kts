@@ -51,7 +51,7 @@ commonAndroid {
       }
 
       if (pluginManager.hasPlugin("com.android.library")) {
-         targetSdk = 33
+         targetSdk = 34
       }
    }
 
