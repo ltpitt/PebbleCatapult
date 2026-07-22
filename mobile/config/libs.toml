@@ -28,7 +28,7 @@ junit4 = "4.13.2"
 junit4-parameterinjector = "1.22"
 kermit = "2.1.0"
 kotest = "6.2.1"
-kotlin = "2.3.21"
+kotlin = "2.4.10"
 kotlin-coroutines = "1.11.0"
 kotlin-serializationRuntime = "1.11.0"
 kotlinova = "4.1.1"
@@ -103,6 +103,7 @@ kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kotest-assertions = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
 kotlin-coroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlin-coroutines" }
 kotlin-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlin-coroutines" }
+kotlin-metadata = { module = "org.jetbrains.kotlin:kotlin-metadata-jvm", version.ref = "kotlin" }
 kotlin-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlin-plugin-compose = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 kotlin-plugin-serialization = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }
