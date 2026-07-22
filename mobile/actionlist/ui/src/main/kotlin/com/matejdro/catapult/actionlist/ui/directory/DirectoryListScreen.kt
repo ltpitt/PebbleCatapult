@@ -184,7 +184,7 @@ private fun DirectoryListScreenContent(
 ) {
    Scaffold(
       Modifier.fillMaxSize(),
-      contentWindowInsets = WindowInsets(),
+      contentWindowInsets = WindowInsets(0.dp),
       floatingActionButton = {
          FloatingActionButton(
             onClick = addNew,
