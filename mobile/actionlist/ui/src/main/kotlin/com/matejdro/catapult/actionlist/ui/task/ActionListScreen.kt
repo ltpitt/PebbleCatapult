@@ -194,7 +194,7 @@ private fun TaskListScreenContent(
 ) {
    Scaffold(
       Modifier.fillMaxSize(),
-      contentWindowInsets = WindowInsets(),
+      contentWindowInsets = WindowInsets(0.dp),
       floatingActionButton = {
          AddButtons(addTaskerTask, addDirectoryLink, addButtonsShown)
       },
