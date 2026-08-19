@@ -76,7 +76,7 @@ import kotlin.time.Duration.Companion.seconds
 class TabListDetailScene(
    @Assisted
    private val input: Input,
-   private val preferences: DataStore<Preferences>,
+   preferences: DataStore<Preferences>,
 ) : Scene<ScreenKey> {
 
    override val content: @Composable (() -> Unit) = {
