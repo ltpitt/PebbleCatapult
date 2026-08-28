@@ -16,7 +16,7 @@ android {
 
    defaultConfig {
       applicationId = "com.matejdro.catapult"
-      targetSdk = 34
+      targetSdk = 37
       versionCode = 1
       versionName = "1.0.0"
 
@@ -70,10 +70,11 @@ android {
       }
    }
 
-   applicationVariants.all {
-      outputs.all {
-         val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
-         output.outputFileName = "catapult-mobile.apk"
+   androidComponents.apply {
+      onVariants { variant ->
+         variant.outputs.forEach { output ->
+            output.outputFileName.set("notificationcenter-mobile.apk")
+         }
       }
    }
 }
