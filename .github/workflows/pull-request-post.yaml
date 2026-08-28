@@ -29,31 +29,13 @@ jobs:
         run: |
           pr=$(cat artifacts/results/PebbleCatapult/PebbleCatapult/pr_number.txt)
           echo "pr_num=$pr" > $GITHUB_OUTPUT
-          echo "pr_ref=refs/pull/$pr/merge" >> $GITHUB_OUTPUT
-          mkdir -p repo
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: steps.download.outcome == 'success'
-        with:
-          lfs: true
-          submodules: recursive
-          ref: ${{ steps.pr-meta.outputs.pr_ref }}
-          fetch-depth: 0
-          path: repo
-          persist-credentials: false
-      - name: Set git ref
-        if: steps.download.outcome == 'success'
-        id: git-hash
-        run:
-          ref=$(git rev-parse HEAD);echo "git_hash=$ref" > $GITHUB_OUTPUT
-        working-directory: repo
-
       - name: Post SARIF findings as comments in the pull request
         if: always() && steps.download.outcome == 'success' && hashFiles('artifacts/results/PebbleCatapult/PebbleCatapult/mobile/merge.sarif') != ''
         uses: sett-and-hive/sarif-to-comment-action/composite@7e69cd5f511daf8e8804487150df819f8380018e
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          branch: "${{ steps.git-hash.outputs.git_hash }}"
+          branch: "${{ github.event.workflow_run.head_sha }}"
           pr-number: "${{ steps.pr-meta.outputs.pr_num }}"
           title: Lint report
           show-rule-details: false

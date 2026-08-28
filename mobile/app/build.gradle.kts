@@ -73,7 +73,7 @@ android {
    androidComponents.apply {
       onVariants { variant ->
          variant.outputs.forEach { output ->
-            output.outputFileName.set("notificationcenter-mobile.apk")
+            output.outputFileName.set("catapult-mobile.apk")
          }
       }
    }
