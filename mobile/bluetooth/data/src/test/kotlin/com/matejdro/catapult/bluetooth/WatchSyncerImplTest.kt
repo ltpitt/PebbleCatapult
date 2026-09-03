@@ -5,6 +5,7 @@ import com.matejdro.bucketsync.api.Bucket
 import com.matejdro.bucketsync.api.BucketUpdate
 import com.matejdro.catapult.actionlist.api.CatapultAction
 import com.matejdro.catapult.actionlist.api.CatapultDirectory
+import com.matejdro.catapult.actionlist.api.MAX_ACTIONS_TO_SYNC
 import com.matejdro.catapult.actionlist.test.FakeCatapultActionRepository
 import com.matejdro.catapult.actionlist.test.FakeDirectoryListRepository
 import io.kotest.matchers.collections.shouldContainExactly
@@ -75,6 +76,105 @@ class WatchSyncerImplTest {
             )
          )
       )
+   }
+
+   @Test
+   fun `Sync top level directories as folders on the watch home`() = scope.runTest {
+      watchSyncer.init()
+
+      directoryRepository.insert(CatapultDirectory(1, "Starting Directory"))
+      directoryRepository.insert(CatapultDirectory(2, "car"))
+      directoryRepository.insert(CatapultDirectory(3, "bike"))
+
+      actionRepository.insert(CatapultAction("Action A", directoryId = 1, id = 10))
+
+      watchSyncer.syncDirectory(1)
+      delay(1.seconds)
+
+      bucketSyncRepository.awaitNextUpdate(0u, emptyList()) shouldBe BucketUpdate(
+         1u,
+         listOf(1u),
+         listOf(
+            Bucket(
+               1u,
+               byteArrayOf(
+                  // Number of items
+                  3,
+
+                  // Action A
+                  0, 10,
+                  0,
+                  0,
+                  0x41, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x20, 0x41, 0,
+
+                  // car folder
+                  0, 2,
+                  2,
+                  0,
+                  0x63, 0x61, 0x72, 0,
+
+                  // bike folder
+                  0, 3,
+                  3,
+                  0,
+                  0x62, 0x69, 0x6b, 0x65, 0
+               )
+            )
+         )
+      )
+   }
+
+   @Test
+   fun `Do not duplicate a folder when a manual directory link already exists`() = scope.runTest {
+      watchSyncer.init()
+
+      directoryRepository.insert(CatapultDirectory(1, "Starting Directory"))
+      directoryRepository.insert(CatapultDirectory(2, "car"))
+
+      actionRepository.insert(CatapultAction("Manual link", directoryId = 1, id = 10, targetDirectoryId = 2))
+
+      watchSyncer.syncDirectory(1)
+      delay(1.seconds)
+
+      bucketSyncRepository.awaitNextUpdate(0u, emptyList()).bucketsToUpdate.first().data.first() shouldBe 1
+   }
+
+   @Test
+   fun `Do not add folders when syncing a non-starting directory`() = scope.runTest {
+      watchSyncer.init()
+
+      directoryRepository.insert(CatapultDirectory(1, "Starting Directory"))
+      directoryRepository.insert(CatapultDirectory(2, "car"))
+      directoryRepository.insert(CatapultDirectory(3, "bike"))
+
+      actionRepository.insert(CatapultAction("Action A", directoryId = 2, id = 10))
+
+      watchSyncer.syncDirectory(2)
+      delay(1.seconds)
+
+      bucketSyncRepository.awaitNextUpdate(0u, emptyList()).bucketsToUpdate.first().data.first() shouldBe 1
+   }
+
+   @Test
+   fun `Keep all real actions when the starting directory is full`() = scope.runTest {
+      watchSyncer.init()
+
+      directoryRepository.insert(CatapultDirectory(1, "Starting Directory"))
+      directoryRepository.insert(CatapultDirectory(2, "car"))
+
+      repeat(MAX_ACTIONS_TO_SYNC) { index ->
+         actionRepository.insert(
+            CatapultAction("Action $index", directoryId = 1, id = 100 + index)
+         )
+      }
+
+      watchSyncer.syncDirectory(1)
+      delay(1.seconds)
+
+      val data = bucketSyncRepository.awaitNextUpdate(0u, emptyList()).bucketsToUpdate.first().data
+      data.first() shouldBe MAX_ACTIONS_TO_SYNC.toByte()
+      data[1] shouldBe 0
+      data[2] shouldBe 100
    }
 
    @Test

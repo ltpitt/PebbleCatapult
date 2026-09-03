@@ -1,6 +1,7 @@
 package com.matejdro.catapult.bluetooth
 
 import com.matejdro.bucketsync.BucketSyncRepository
+import com.matejdro.catapult.actionlist.api.CatapultAction
 import com.matejdro.catapult.actionlist.api.CatapultActionRepository
 import com.matejdro.catapult.actionlist.api.DirectoryListRepository
 import com.matejdro.catapult.actionlist.api.MAX_ACTIONS_TO_SYNC
@@ -35,7 +36,14 @@ class WatchSyncerImpl(
 
    @Suppress("MissingUseCall") // writeUtf8 returns `this` — buffer is already in a use block
    override suspend fun syncDirectory(id: Int) = withDefault {
-      val items = actionRepository.value.getAll(id, limit = MAX_ACTIONS_TO_SYNC, onlyEnabled = true).firstData()
+      val items = actionRepository.value.getAll(id, limit = MAX_ACTIONS_TO_SYNC, onlyEnabled = true)
+         .firstData()
+         .toMutableList()
+
+      if (id == STARTING_DIRECTORY_ID) {
+         appendDirectoriesAsFolders(items)
+      }
+
       logcat { "Syncing directory $id, ${items.size} items" }
 
       val data = Buffer().use { buffer ->
@@ -52,6 +60,29 @@ class WatchSyncerImpl(
       logcat(LogPriority.DEBUG, null) { "Size: ${data.size} bytes" }
 
       bucketSyncRepository.updateBucket(id.toUByte(), data)
+   }
+
+   private suspend fun appendDirectoriesAsFolders(items: MutableList<CatapultAction>) {
+      val remainingSlots = MAX_ACTIONS_TO_SYNC - items.size
+      if (remainingSlots <= 0) return
+
+      val alreadyLinked = items.mapNotNull { it.targetDirectoryId }.toSet()
+
+      val folders = directoryRepository.value.getAll().firstData()
+         .asSequence()
+         .sortedBy { it.id }
+         .filter { it.id != STARTING_DIRECTORY_ID && it.id !in alreadyLinked }
+         .take(remainingSlots)
+         .map { directory ->
+            CatapultAction(
+               title = directory.title,
+               directoryId = STARTING_DIRECTORY_ID,
+               id = directory.id,
+               targetDirectoryId = directory.id,
+            )
+         }
+
+      items += folders
    }
 
    override suspend fun deleteDirectory(id: Int) {

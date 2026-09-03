@@ -27,8 +27,9 @@ typedef struct
     MenuLayer* menu;
     ActionListBucket current_menu_data;
     CustomStatusBarLayer* status_bar;
+    GBitmap* folder_arrow;
+    GBitmap* folder_arrow_highlight;
 } WindowActionList;
-
 
 static void load_menu(WindowActionList* window);
 static void configure_buttons(void* context);
@@ -49,7 +50,14 @@ static void menu_draw_row_callback(GContext* ctx, const Layer* cell_layer, MenuI
 {
     const int16_t row = cell_index->row;
 
-    menu_cell_basic_draw(ctx, cell_layer, ((WindowActionList*)data)->current_menu_data.data[row].title, NULL, NULL);
+    const ActionItem* item = &((WindowActionList*)data)->current_menu_data.data[row];
+    GBitmap* folder_arrow = ((WindowActionList*)data)->folder_arrow;
+    GBitmap* folder_arrow_highlight = ((WindowActionList*)data)->folder_arrow_highlight;
+    const bool highlighted = menu_cell_layer_is_highlighted(cell_layer);
+    menu_cell_basic_draw(ctx, cell_layer, item->title, NULL,
+                         item->target_directory != 0
+                             ? (highlighted ? folder_arrow_highlight : folder_arrow)
+                             : NULL);
 }
 
 static void bucket_update_callback(BucketMetadata bucket_metadata, void* context)
@@ -68,6 +76,10 @@ static void window_load(Window* window)
 {
     WindowActionList* window_action_list = window_get_user_data(window);
     window_action_list->current_menu_data.count = 0;
+    window_action_list->folder_arrow = gbitmap_create_with_resource(RESOURCE_ID_FOLDER_ARROW);
+    window_action_list->folder_arrow_highlight = gbitmap_create_with_resource(
+        RESOURCE_ID_FOLDER_ARROW_HIGHLIGHT
+    );
 
 
     Layer* window_layer = window_get_root_layer(window);
@@ -108,6 +120,8 @@ static void window_unload(Window* window)
 {
     const WindowActionList* window_action_list = window_get_user_data(window);
     menu_layer_destroy(window_action_list->menu);
+    gbitmap_destroy(window_action_list->folder_arrow);
+    gbitmap_destroy(window_action_list->folder_arrow_highlight);
     window_destroy(window);
 }
 

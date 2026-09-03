@@ -121,6 +121,41 @@ class DirectoryListRepositoryImplTest {
 
       syncer.deletedDirectories.shouldContainExactly(2)
    }
+
+   @Test
+   fun `Adding a directory should sync the starting directory so it appears on the watch`() = scope.runTest {
+      repo.insert(CatapultDirectory(1, "Starting Directory"))
+      syncer.syncedDirectories.clear()
+
+      repo.insert(CatapultDirectory(0, "Directory A"))
+      runCurrent()
+
+      syncer.syncedDirectories.shouldContainExactly(1)
+   }
+
+   @Test
+   fun `Renaming a directory should sync the starting directory`() = scope.runTest {
+      repo.insert(CatapultDirectory(1, "Starting Directory"))
+      repo.insert(CatapultDirectory(0, "Directory A"))
+      syncer.syncedDirectories.clear()
+
+      repo.update(CatapultDirectory(2, "Directory B"))
+      runCurrent()
+
+      syncer.syncedDirectories.shouldContainExactly(1)
+   }
+
+   @Test
+   fun `Deleting a directory should sync the starting directory`() = scope.runTest {
+      repo.insert(CatapultDirectory(1, "Starting Directory"))
+      repo.insert(CatapultDirectory(0, "Directory A"))
+      syncer.syncedDirectories.clear()
+
+      repo.delete(2)
+      runCurrent()
+
+      syncer.syncedDirectories.shouldContainExactly(1)
+   }
 }
 
 internal fun createTestDirectoryQueries(

@@ -52,6 +52,7 @@ class DirectoryListRepositoryImpl(
 
    override suspend fun insert(directory: CatapultDirectory) = withDefault<Unit> {
       dbDirectoryQueries.insert(directory.toDb())
+      syncStartingDirectory()
    }
 
    override suspend fun update(directory: CatapultDirectory) {
@@ -59,6 +60,7 @@ class DirectoryListRepositoryImpl(
 
       withDefault {
          dbDirectoryQueries.update(directory.toDb())
+         syncStartingDirectory()
       }
    }
 
@@ -68,6 +70,13 @@ class DirectoryListRepositoryImpl(
       withDefault {
          dbDirectoryQueries.delete(id.toLong())
          watchSyncer.deleteDirectory(id)
+         syncStartingDirectory()
       }
    }
+
+   private suspend fun syncStartingDirectory() {
+      watchSyncer.syncDirectory(STARTING_DIRECTORY_ID)
+   }
 }
+
+private const val STARTING_DIRECTORY_ID = 1
