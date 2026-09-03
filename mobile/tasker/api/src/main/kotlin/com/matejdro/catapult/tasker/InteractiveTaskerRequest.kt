@@ -1,10 +1,18 @@
 package com.matejdro.catapult.tasker
 
 sealed interface InteractiveTaskerRequest {
-   data class List(
+   @ConsistentCopyVisibility
+   data class List private constructor(
       val title: String,
       val items: kotlin.collections.List<Item>,
-   ) : InteractiveTaskerRequest
+   ) : InteractiveTaskerRequest {
+      companion object {
+         operator fun invoke(
+            title: String,
+            items: kotlin.collections.List<Item>,
+         ): List = List(title, items.toList())
+      }
+   }
 
    data class Confirmation(
       val title: String,

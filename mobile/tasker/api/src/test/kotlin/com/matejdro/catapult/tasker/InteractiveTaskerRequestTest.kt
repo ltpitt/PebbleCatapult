@@ -18,6 +18,16 @@ class InteractiveTaskerRequestTest {
    }
 
    @Test
+   fun `does not reflect mutations to caller provided items`() {
+      val items = mutableListOf(InteractiveTaskerRequest.Item("first", "First item"))
+      val request = InteractiveTaskerRequest.List("Choose an item", items)
+
+      items += InteractiveTaskerRequest.Item("second", "Second item")
+
+      request.items shouldBe listOf(InteractiveTaskerRequest.Item("first", "First item"))
+   }
+
+   @Test
    fun `represents every result state`() {
       val results = listOf<InteractiveTaskerResult>(
          InteractiveTaskerResult.Selection("id", "value"),
