@@ -28,6 +28,20 @@ class InteractiveTaskerRequestTest {
    }
 
    @Test
+   fun `does not allow mutation through mutable list cast`() {
+      val request = InteractiveTaskerRequest.List(
+         "Choose an item",
+         listOf(InteractiveTaskerRequest.Item("first", "First item")),
+      )
+
+      val mutableItems = request.items as MutableList<InteractiveTaskerRequest.Item>
+
+      org.junit.jupiter.api.assertThrows<UnsupportedOperationException> {
+         mutableItems.add(InteractiveTaskerRequest.Item("second", "Second item"))
+      }
+   }
+
+   @Test
    fun `represents every result state`() {
       val results = listOf<InteractiveTaskerResult>(
          InteractiveTaskerResult.Selection("id", "value"),

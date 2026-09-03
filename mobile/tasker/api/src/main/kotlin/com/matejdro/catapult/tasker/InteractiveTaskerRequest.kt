@@ -1,5 +1,7 @@
 package com.matejdro.catapult.tasker
 
+import java.util.Collections
+
 sealed interface InteractiveTaskerRequest {
    @ConsistentCopyVisibility
    data class List private constructor(
@@ -10,7 +12,7 @@ sealed interface InteractiveTaskerRequest {
          operator fun invoke(
             title: String,
             items: kotlin.collections.List<Item>,
-         ): List = List(title, items.toList())
+         ): List = List(title, Collections.unmodifiableList(items.toList()))
       }
    }
 
