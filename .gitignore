@@ -1,4 +1,5 @@
 .idea/
+.worktrees/
 
 # macOS
 .DS_Store
