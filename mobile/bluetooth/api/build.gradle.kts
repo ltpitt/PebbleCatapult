@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+   api(libs.pebblekit.api)
    testFixturesApi(projects.bluetooth.api)
    testFixturesApi(projects.bucketsync.api)
    testFixturesApi(libs.pebblekit.api)

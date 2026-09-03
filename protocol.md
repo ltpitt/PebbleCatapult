@@ -23,6 +23,41 @@ Sent to the watch as the response to the packet 1.
       * Bucket data (bytes)
 * `3` - If this key exists, watch should auto-close after sync is completed (uint8)
 
+### Interactive requests (packets 5-7)
+
+Interactive packets use dictionary key `0` for the packet ID and key `1` for a
+session ID (`uint32`). Packet IDs are deliberately outside the existing 0–4
+range. Every packet also carries key `3` (zero-based chunk sequence, `uint32`),
+key `4` (total chunk count, `uint16`) and key `5` (terminal marker, `uint8`;
+`1` only on the final chunk). Chunks may arrive out of order, but a request is
+displayed only after every sequence number from zero through total-1 has
+arrived. A duplicate identical chunk is ignored; a duplicate with different
+contents rejects the request.
+
+* **5 SHOW_LIST (phone → watch):** key `2` title (UTF-8 text, at most 64
+  bytes), key `3` item/chunk sequence (`uint32`), key `7` item value (UTF-8
+  text, at most 64 bytes), and key `8` item ID (UTF-8 text, at most 32 bytes). A list
+  contains at most 32 items. Empty lists are represented by one terminal chunk.
+* **6 SHOW_CONFIRMATION (phone → watch):** key `2` title (UTF-8, at most 64
+  bytes), key `7` message (UTF-8, at most 128 bytes).
+* **7 CANCEL (phone → watch):** no fields besides the common fields.
+
+The phone must reject a required field that is absent or has the wrong type,
+and must reject strings or item counts over these limits; it never truncates.
+Each encoded packet must be strictly smaller than the incoming AppMessage
+buffer size reported by Watch Welcome.
+
+### Interactive responses (watch → phone)
+
+* **8 LIST_SELECTION:** key `6` selected item sequence (`uint32`).
+* **9 CONFIRMATION_RESULT:** key `8` accepted (`uint8`, `1` yes, `0` no).
+* **10 CANCEL_OR_ERROR:** optional key `9` UTF-8 error text (at most 64 bytes).
+
+Responses carry the same common session/chunk fields and are terminal. The
+phone ignores stale or unknown session IDs and never completes a session from
+an incomplete response. A CANCEL response without an error is user
+cancellation; an error is a display/protocol failure.
+
 (Note: if phone/watch protocol versions do not match, only dictionary entry `1` is sent).
 
 ### Re-start bucketsync sync (packet 2)
