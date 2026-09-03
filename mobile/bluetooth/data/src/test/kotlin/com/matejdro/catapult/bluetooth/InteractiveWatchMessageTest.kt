@@ -19,6 +19,16 @@ class InteractiveWatchMessageTest {
 
       packets.map { (it[3u] as PebbleDictionaryItem.UInt32).value } shouldBe listOf(0u, 1u)
       packets.map { (it[5u] as PebbleDictionaryItem.UInt8).value } shouldBe listOf(0u.toUByte(), 1u.toUByte())
+      packets.map { (it[6u] as PebbleDictionaryItem.UInt8).value } shouldBe
+         listOf(2u.toUByte(), 2u.toUByte())
+    }
+
+   @Test
+   fun `empty list emits one terminal packet`() {
+      val packet = InteractiveWatchMessage.ShowList(42u, "Places", emptyList()).packets(256).single()
+      (packet[5u] as PebbleDictionaryItem.UInt8).value shouldBe 1u.toUByte()
+      (packet[6u] as PebbleDictionaryItem.UInt8).value shouldBe 0u.toUByte()
+      (InteractiveWatchMessage.decode(packet) as InteractiveWatchMessage.ListChunk).item shouldBe null
    }
 
    @Test
@@ -54,5 +64,32 @@ class InteractiveWatchMessageTest {
       val assembler = InteractiveListAssembler()
       assembler.accept(chunk)
       shouldThrow<IllegalArgumentException> { assembler.accept(conflicting) }
+   }
+
+   @Test
+   fun `selection carries selected item id and value`() {
+      val selection = InteractiveWatchMessage.ListSelection(42u, "home", "Home")
+      val decoded = InteractiveWatchMessage.decode(selection.toPacket(256))
+      decoded shouldBe selection
+   }
+
+   @Test
+   fun `selection requires one terminal chunk`() {
+      val packet = InteractiveWatchMessage.ListSelection(42u, "home", "Home")
+         .toPacket(256).toMutableMap().apply { put(4u, PebbleDictionaryItem.UInt16(2u)) }
+      shouldThrow<IllegalArgumentException> { InteractiveWatchMessage.decode(packet) }
+   }
+
+   @Test
+   fun `cancel carries a reason`() {
+      val cancel = InteractiveWatchMessage.Cancel(42u, "user cancelled")
+      InteractiveWatchMessage.decode(cancel.toPacket(256)) shouldBe cancel
+   }
+
+   @Test
+   fun `invalid terminal marker is rejected`() {
+      val packet = InteractiveWatchMessage.ShowList(42u, "x", emptyList()).packets(256).single()
+         .toMutableMap().apply { put(5u, PebbleDictionaryItem.UInt8(2u)) }
+      shouldThrow<IllegalArgumentException> { InteractiveWatchMessage.decode(packet) }
    }
 }

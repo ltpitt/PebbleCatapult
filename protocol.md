@@ -35,12 +35,15 @@ arrived. A duplicate identical chunk is ignored; a duplicate with different
 contents rejects the request.
 
 * **5 SHOW_LIST (phone → watch):** key `2` title (UTF-8 text, at most 64
-  bytes), key `3` item/chunk sequence (`uint32`), key `7` item value (UTF-8
-  text, at most 64 bytes), and key `8` item ID (UTF-8 text, at most 32 bytes). A list
-  contains at most 32 items. Empty lists are represented by one terminal chunk.
+  bytes), key `3` item/chunk sequence (`uint32`), key `6` item count
+  (`uint8`), key `7` item value (UTF-8 text, at most 64 bytes), and key `8`
+  item ID (UTF-8 text, at most 32 bytes). A list contains at most 32 items;
+  one item is carried per chunk and total chunks equals item count. Empty lists
+  are represented by one terminal chunk with item count zero.
 * **6 SHOW_CONFIRMATION (phone → watch):** key `2` title (UTF-8, at most 64
   bytes), key `7` message (UTF-8, at most 128 bytes).
-* **7 CANCEL (phone → watch):** no fields besides the common fields.
+* **7 CANCEL (phone → watch):** key `9` cancellation reason (UTF-8 text, at
+  most 64 bytes), in addition to the common fields.
 
 The phone must reject a required field that is absent or has the wrong type,
 and must reject strings or item counts over these limits; it never truncates.
@@ -49,11 +52,15 @@ buffer size reported by Watch Welcome.
 
 ### Interactive responses (watch → phone)
 
-* **8 LIST_SELECTION:** key `6` selected item sequence (`uint32`).
+* **8 LIST_SELECTION:** key `8` selected item ID (UTF-8 text, at most 32
+  bytes), and key `7` selected item value (UTF-8 text, at most 64 bytes).
 * **9 CONFIRMATION_RESULT:** key `8` accepted (`uint8`, `1` yes, `0` no).
 * **10 CANCEL_OR_ERROR:** optional key `9` UTF-8 error text (at most 64 bytes).
 
 Responses carry the same common session/chunk fields and are terminal. The
+terminal marker is strictly `0` or `1`, and must be `1` exactly when sequence
+equals total chunks minus one. LIST_SELECTION additionally requires exactly one
+chunk and a terminal marker. The
 phone ignores stale or unknown session IDs and never completes a session from
 an incomplete response. A CANCEL response without an error is user
 cancellation; an error is a display/protocol failure.

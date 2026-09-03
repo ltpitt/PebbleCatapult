@@ -35,20 +35,29 @@ sealed interface InteractiveWatchMessage {
       }
    }
 
-   data class Cancel(override val sessionId: UInt) : InteractiveWatchMessage
+   data class Cancel(
+      override val sessionId: UInt,
+      val reason: String,
+   ) : InteractiveWatchMessage {
+      init {
+         require(reason.utf8Length() <= MAX_REASON_BYTES) { "Cancel reason is too long" }
+      }
+   }
 
    data class ListChunk(
       override val sessionId: UInt,
       val title: String,
       val sequence: UInt,
       val totalChunks: UShort,
+      val itemCount: UByte,
       val item: Item?,
       val terminal: Boolean,
    ) : InteractiveWatchMessage
 
    data class ListSelection(
       override val sessionId: UInt,
-      val itemSequence: UInt,
+      val selectedItemId: String,
+      val selectedItemValue: String,
    ) : InteractiveWatchMessage
 
    data class ConfirmationResult(
@@ -81,29 +90,33 @@ sealed interface InteractiveWatchMessage {
       is ShowList -> {
          require(maxPayloadBytes > 0) { "Payload limit must be positive" }
          val total = maxOf(1, items.size)
-         items.mapIndexed { index, item ->
+         (if (items.isEmpty()) listOf(null) else items).mapIndexed { index, item ->
             packet(PACKET_SHOW_LIST, maxPayloadBytes, index, total) {
                put(2u, PebbleDictionaryItem.Text(title))
-               put(8u, PebbleDictionaryItem.Text(item.id))
-               put(7u, PebbleDictionaryItem.Text(item.value))
-            }
+              put(6u, PebbleDictionaryItem.UInt8(items.size.toUByte()))
+              item?.let {
+                 put(8u, PebbleDictionaryItem.Text(it.id))
+                 put(7u, PebbleDictionaryItem.Text(it.value))
+              }
+           }
          }
       }
       else -> listOf(toPacket(maxPayloadBytes))
    }
 
    fun toPacket(maxPayloadBytes: Int): PebbleDictionary = when (this) {
-      is ShowList -> packet(PACKET_SHOW_LIST, maxPayloadBytes, 0, 1) {
-         put(2u, PebbleDictionaryItem.Text(title))
-      }
+      is ShowList -> packets(maxPayloadBytes).single()
       is ListChunk -> error("List chunks are decoded representations and cannot be encoded")
       is ShowConfirmation -> packet(PACKET_SHOW_CONFIRMATION, maxPayloadBytes, 0, 1) {
          put(2u, PebbleDictionaryItem.Text(title))
          put(7u, PebbleDictionaryItem.Text(message))
       }
-      is Cancel -> packet(PACKET_CANCEL, maxPayloadBytes, 0, 1)
+      is Cancel -> packet(PACKET_CANCEL, maxPayloadBytes, 0, 1) {
+         put(9u, PebbleDictionaryItem.Text(reason))
+      }
       is ListSelection -> packet(PACKET_LIST_SELECTION, maxPayloadBytes, 0, 1) {
-         put(6u, PebbleDictionaryItem.UInt32(itemSequence))
+         put(8u, PebbleDictionaryItem.Text(selectedItemId))
+         put(7u, PebbleDictionaryItem.Text(selectedItemValue))
       }
       is ConfirmationResult -> packet(PACKET_CONFIRMATION_RESULT, maxPayloadBytes, 0, 1) {
          put(8u, PebbleDictionaryItem.UInt8(if (accepted) 1u else 0u))
@@ -127,6 +140,7 @@ sealed interface InteractiveWatchMessage {
       const val MAX_ITEM_ID_BYTES = 32
       const val MAX_ITEM_VALUE_BYTES = 64
       const val MAX_ERROR_BYTES = 64
+      const val MAX_REASON_BYTES = 64
 
       fun decode(data: PebbleDictionary): InteractiveWatchMessage {
          val packet = (data[0u] as? PebbleDictionaryItem.UInt32)?.value
@@ -138,8 +152,15 @@ sealed interface InteractiveWatchMessage {
          val total = (data[4u] as? PebbleDictionaryItem.UInt16)?.value
             ?: throw IllegalArgumentException("Missing chunk count")
          require(total > 0.toUShort()) { "Chunk count must be positive" }
-         val terminal = ((data[5u] as? PebbleDictionaryItem.UInt8)?.value
-            ?: throw IllegalArgumentException("Missing terminal marker")) == 1u.toUByte()
+         val terminalMarker = (data[5u] as? PebbleDictionaryItem.UInt8)?.value
+            ?: throw IllegalArgumentException("Missing terminal marker")
+         require(terminalMarker == 0u.toUByte() || terminalMarker == 1u.toUByte()) {
+            "Invalid terminal marker"
+         }
+         val terminal = terminalMarker == 1u.toUByte()
+         require(terminal == (sequence.toLong() == total.toLong() - 1)) {
+            "Invalid terminal marker for chunk"
+         }
          fun text(key: UInt, required: Boolean = true): String? {
             val value = (data[key] as? PebbleDictionaryItem.Text)?.value
             require(!required || value != null) { "Missing key $key" }
@@ -150,25 +171,35 @@ sealed interface InteractiveWatchMessage {
                require(total == 1.toUShort() && terminal) { "Confirmation must be terminal" }
                ShowConfirmation(session, text(2u)!!, text(7u)!!)
             }
-            PACKET_SHOW_LIST -> ListChunk(
-               session,
-               text(2u)!!,
-               sequence,
-               total,
-               text(8u, false)?.let { id ->
-                  Item(id, text(7u) ?: throw IllegalArgumentException("Missing item value"))
-               },
-               terminal,
-            )
+            PACKET_SHOW_LIST -> {
+               val itemCount = (data[6u] as? PebbleDictionaryItem.UInt8)?.value
+                  ?: throw IllegalArgumentException("Missing item count")
+               require(itemCount.toInt() <= MAX_ITEMS) { "Too many list items" }
+               val id = text(8u, false)
+               val value = text(7u, false)
+               require((id == null) == (value == null)) { "Incomplete list item" }
+               require(itemCount.toInt() == 0 || (id != null && value != null)) {
+                  "Missing list item"
+               }
+               require(itemCount.toInt() == 0 || total.toInt() == itemCount.toInt()) {
+                  "List item count does not match chunks"
+               }
+               require(itemCount.toInt() > 0 || (sequence == 0u && total == 1.toUShort() && id == null)) {
+                  "Invalid empty list chunk"
+               }
+               ListChunk(
+                  session, text(2u)!!, sequence, total, itemCount,
+                  id?.let { Item(it, value!!) }, terminal,
+               )
+            }
             PACKET_CANCEL -> {
                require(total == 1.toUShort() && terminal) { "Cancel must be terminal" }
-               Cancel(session)
+               Cancel(session, text(9u) ?: throw IllegalArgumentException("Missing cancel reason"))
             }
-            PACKET_LIST_SELECTION -> ListSelection(
-               session,
-               (data[6u] as? PebbleDictionaryItem.UInt32)?.value
-                  ?: throw IllegalArgumentException("Missing item sequence"),
-            )
+            PACKET_LIST_SELECTION -> {
+               require(total == 1.toUShort() && terminal) { "Selection must be terminal" }
+               ListSelection(session, text(8u)!!, text(7u)!!)
+            }
             PACKET_CONFIRMATION_RESULT -> {
                require(total == 1.toUShort() && terminal) { "Result must be terminal" }
                ConfirmationResult(
@@ -191,18 +222,34 @@ class InteractiveListAssembler {
    private var sessionId: UInt? = null
    private var title: String? = null
    private var total: Int? = null
+   private var itemCount: Int? = null
    private val chunks = mutableMapOf<Int, InteractiveWatchMessage.Item?>()
 
    fun accept(chunk: InteractiveWatchMessage.ListChunk): InteractiveWatchMessage.ShowList? {
       val expectedTotal = chunk.totalChunks.toInt()
       require(expectedTotal > 0) { "Chunk count must be positive" }
       require(chunk.sequence.toLong() < expectedTotal) { "Chunk sequence is out of range" }
+      require(chunk.terminal == (chunk.sequence.toLong() == expectedTotal.toLong() - 1)) {
+         "Invalid terminal marker for chunk"
+      }
+      require(chunk.itemCount.toInt() <= InteractiveWatchMessage.MAX_ITEMS) { "Too many list items" }
+      require(chunk.itemCount.toInt() == 0 || chunk.itemCount.toInt() == expectedTotal) {
+         "List item count does not match chunks"
+      }
+      require(chunk.itemCount.toInt() == 0 || chunk.item != null) {
+         "Missing list item"
+      }
+      require(chunk.itemCount.toInt() > 0 || (expectedTotal == 1 && chunk.sequence == 0u && chunk.item == null)) {
+         "Invalid empty list chunk"
+      }
       if (sessionId == null) {
          sessionId = chunk.sessionId
          title = chunk.title
          total = expectedTotal
+         itemCount = chunk.itemCount.toInt()
       } else {
-         require(sessionId == chunk.sessionId && title == chunk.title && total == expectedTotal) {
+         require(sessionId == chunk.sessionId && title == chunk.title && total == expectedTotal &&
+           itemCount == chunk.itemCount.toInt()) {
             "List chunk metadata does not match"
          }
       }
