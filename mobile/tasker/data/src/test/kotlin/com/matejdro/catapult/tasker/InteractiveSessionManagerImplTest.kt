@@ -2,6 +2,7 @@ package com.matejdro.catapult.tasker
 
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -84,6 +85,80 @@ class InteractiveSessionManagerImplTest {
       manager.cancelActive("user cancelled")
 
       result.await() shouldBe InteractiveTaskerResult.Cancelled("user cancelled")
+   }
+
+   @Test
+   fun `remote cancellation completes active sessions for either request type`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val listResult = async {
+         manager.awaitResult(
+            InteractiveTaskerRequest.List(
+               "Locations",
+               listOf(InteractiveTaskerRequest.Item("home", "Home")),
+            ),
+         )
+      }
+      runCurrent()
+
+      manager.acceptResult(1u, InteractiveTaskerResult.Cancelled("remote cancelled"))
+
+      listResult.await() shouldBe InteractiveTaskerResult.Cancelled("remote cancelled")
+
+      val confirmationResult = async {
+         manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
+      }
+      runCurrent()
+
+      manager.acceptResult(2u, InteractiveTaskerResult.Cancelled("remote cancelled"))
+
+      confirmationResult.await() shouldBe InteractiveTaskerResult.Cancelled("remote cancelled")
+   }
+
+   @Test
+   fun `remote failure completes active sessions for either request type`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val listResult = async {
+         manager.awaitResult(
+            InteractiveTaskerRequest.List(
+               "Locations",
+               listOf(InteractiveTaskerRequest.Item("home", "Home")),
+            ),
+         )
+      }
+      runCurrent()
+
+      manager.acceptResult(1u, InteractiveTaskerResult.Failed("remote failed"))
+
+      listResult.await() shouldBe InteractiveTaskerResult.Failed("remote failed")
+
+      val confirmationResult = async {
+         manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
+      }
+      runCurrent()
+
+      manager.acceptResult(2u, InteractiveTaskerResult.Failed("remote failed"))
+
+      confirmationResult.await() shouldBe InteractiveTaskerResult.Failed("remote failed")
+   }
+
+   @Test
+   fun `caller cancellation clears active session for a later request`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val cancelled = async {
+         manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
+      }
+      runCurrent()
+
+      cancelled.cancel(CancellationException("caller cancelled"))
+      cancelled.join()
+
+      val next = async {
+         manager.awaitResult(InteractiveTaskerRequest.Confirmation("Next", "Proceed?"))
+      }
+      runCurrent()
+      manager.acceptResult(2u, InteractiveTaskerResult.Confirmation(true))
+
+      next.await() shouldBe InteractiveTaskerResult.Confirmation(true)
    }
 
    @Test

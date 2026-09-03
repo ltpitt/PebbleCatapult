@@ -2,9 +2,11 @@ package com.matejdro.catapult.tasker
 
 import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -34,16 +36,19 @@ class InteractiveSessionManagerImpl(
          }
       }
 
-      val result = withTimeoutOrNull(timeout) {
-         session.result.await()
-      } ?: InteractiveTaskerResult.TimedOut("Interactive session timed out")
-
-      mutex.withLock {
-         if (activeSession?.id == session.id) {
-            activeSession = null
+      try {
+         return withTimeoutOrNull(timeout) {
+            session.result.await()
+         } ?: InteractiveTaskerResult.TimedOut("Interactive session timed out")
+      } finally {
+         withContext(NonCancellable) {
+            mutex.withLock {
+               if (activeSession?.id == session.id) {
+                  activeSession = null
+               }
+            }
          }
       }
-      return result
    }
 
    override fun cancelActive(reason: String) {
@@ -73,5 +78,5 @@ class InteractiveSessionManagerImpl(
       when (this) {
          is InteractiveTaskerRequest.List -> result is InteractiveTaskerResult.Selection
          is InteractiveTaskerRequest.Confirmation -> result is InteractiveTaskerResult.Confirmation
-      }
+      } || result is InteractiveTaskerResult.Cancelled || result is InteractiveTaskerResult.Failed
 }
