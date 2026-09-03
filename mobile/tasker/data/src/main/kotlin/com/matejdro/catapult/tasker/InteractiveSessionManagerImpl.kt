@@ -59,10 +59,19 @@ class InteractiveSessionManagerImpl(
 
    override suspend fun acceptResult(sessionId: UInt, result: InteractiveTaskerResult) {
       mutex.withLock {
-         activeSession?.takeIf { it.id == sessionId }?.let {
-            it.result.complete(result)
-            activeSession = null
-         }
+         activeSession
+            ?.takeIf { it.id == sessionId }
+            ?.takeIf { it.request.accepts(result) }
+            ?.let {
+               it.result.complete(result)
+               activeSession = null
+            }
       }
    }
+
+   private fun InteractiveTaskerRequest.accepts(result: InteractiveTaskerResult): Boolean =
+      when (this) {
+         is InteractiveTaskerRequest.List -> result is InteractiveTaskerResult.Selection
+         is InteractiveTaskerRequest.Confirmation -> result is InteractiveTaskerResult.Confirmation
+      }
 }

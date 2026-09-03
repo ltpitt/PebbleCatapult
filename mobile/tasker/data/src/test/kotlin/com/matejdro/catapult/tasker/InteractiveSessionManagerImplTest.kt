@@ -26,6 +26,43 @@ class InteractiveSessionManagerImplTest {
    }
 
    @Test
+   fun `confirmation result does not complete active list session`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val result = async {
+         manager.awaitResult(
+            InteractiveTaskerRequest.List(
+               "Locations",
+               listOf(InteractiveTaskerRequest.Item("home", "Home")),
+            ),
+         )
+      }
+      runCurrent()
+
+      manager.acceptResult(1u, InteractiveTaskerResult.Confirmation(true))
+      runCurrent()
+      result.isCompleted shouldBe false
+
+      manager.acceptResult(1u, InteractiveTaskerResult.Selection("home", "Home"))
+      result.await() shouldBe InteractiveTaskerResult.Selection("home", "Home")
+   }
+
+   @Test
+   fun `selection result does not complete active confirmation session`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val result = async {
+         manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
+      }
+      runCurrent()
+
+      manager.acceptResult(1u, InteractiveTaskerResult.Selection("home", "Home"))
+      runCurrent()
+      result.isCompleted shouldBe false
+
+      manager.acceptResult(1u, InteractiveTaskerResult.Confirmation(true))
+      result.await() shouldBe InteractiveTaskerResult.Confirmation(true)
+   }
+
+   @Test
    fun `timeout returns timed out result`() = runTest {
       val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
       val result = async {
