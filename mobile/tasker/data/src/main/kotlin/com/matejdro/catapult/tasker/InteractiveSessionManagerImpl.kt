@@ -76,7 +76,10 @@ class InteractiveSessionManagerImpl(
 
    private fun InteractiveTaskerRequest.accepts(result: InteractiveTaskerResult): Boolean =
       when (this) {
-         is InteractiveTaskerRequest.List -> result is InteractiveTaskerResult.Selection
+         is InteractiveTaskerRequest.List ->
+            (result as? InteractiveTaskerResult.Selection)?.let { selection ->
+               items.any { it.id == selection.id && it.value == selection.value }
+            } == true
          is InteractiveTaskerRequest.Confirmation -> result is InteractiveTaskerResult.Confirmation
       } || result is InteractiveTaskerResult.Cancelled || result is InteractiveTaskerResult.Failed
 }

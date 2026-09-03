@@ -27,6 +27,42 @@ class InteractiveSessionManagerImplTest {
    }
 
    @Test
+   fun `unknown list selection id does not complete active session`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val request = InteractiveTaskerRequest.List(
+         "Locations",
+         listOf(InteractiveTaskerRequest.Item("home", "Home")),
+      )
+      val result = async { manager.awaitResult(request) }
+      runCurrent()
+
+      manager.acceptResult(1u, InteractiveTaskerResult.Selection("work", "Work"))
+      runCurrent()
+      result.isCompleted shouldBe false
+
+      manager.acceptResult(1u, InteractiveTaskerResult.Selection("home", "Home"))
+      result.await() shouldBe InteractiveTaskerResult.Selection("home", "Home")
+   }
+
+   @Test
+   fun `mismatched list selection value does not complete active session`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val request = InteractiveTaskerRequest.List(
+         "Locations",
+         listOf(InteractiveTaskerRequest.Item("home", "Home")),
+      )
+      val result = async { manager.awaitResult(request) }
+      runCurrent()
+
+      manager.acceptResult(1u, InteractiveTaskerResult.Selection("home", "Office"))
+      runCurrent()
+      result.isCompleted shouldBe false
+
+      manager.acceptResult(1u, InteractiveTaskerResult.Selection("home", "Home"))
+      result.await() shouldBe InteractiveTaskerResult.Selection("home", "Home")
+   }
+
+   @Test
    fun `confirmation result does not complete active list session`() = runTest {
       val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
       val result = async {
