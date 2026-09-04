@@ -80,8 +80,8 @@ session and therefore has no session ID, chunk fields, or response packet.
 * `6` - vibration (`uint8`: `0` none, `1` short, `2` double)
 * `8` - display duration in milliseconds (`uint32`, 0–300000)
 
-The title and body must be valid, NUL-terminated UTF-8 strings and must fit
-their byte limits; they are never truncated. A duration of zero leaves the
+The title and body must be valid, NUL-terminated UTF-8 strings with no embedded
+NUL bytes and must fit their byte limits; they are never truncated. A duration of zero leaves the
 notification open until Back or Select. A non-zero duration automatically
 dismisses the notification and returns to the previous screen when the timer
 expires. Showing a new notification dismisses the previous notification and
