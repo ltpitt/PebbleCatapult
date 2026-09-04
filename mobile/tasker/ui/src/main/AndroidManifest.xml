@@ -3,6 +3,12 @@
           xmlns:tools="http://schemas.android.com/tools">
 
     <application>
+        <activity android:name=".InteractiveListActivity" android:exported="true" android:label="Show list">
+            <intent-filter><action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" /></intent-filter>
+        </activity>
+        <activity android:name=".InteractiveConfirmationActivity" android:exported="true" android:label="Show confirmation">
+            <intent-filter><action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" /></intent-filter>
+        </activity>
         <activity android:name=".ActionToggleActivity" android:exported="true" android:label="@string/toggle_action">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />

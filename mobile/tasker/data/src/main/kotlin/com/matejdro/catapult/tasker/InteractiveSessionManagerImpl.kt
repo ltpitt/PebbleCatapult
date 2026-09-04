@@ -34,6 +34,12 @@ class InteractiveSessionManagerImpl(
       this.sender = sender
    }
 
+   override fun unregisterSender(sender: InteractiveRequestSender) {
+      if (this.sender === sender) {
+         this.sender = InteractiveRequestSender { _, _ -> }
+      }
+   }
+
    override suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult {
       val session = mutex.withLock {
          if (activeSession != null) {

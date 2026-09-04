@@ -47,7 +47,11 @@ class WatchappConnectionImpl(
 
    init {
       coroutineScope.launch {
-         packetQueue.runQueue()
+         try {
+            packetQueue.runQueue()
+         } finally {
+            interactiveSessionManager.unregisterSender(this@WatchappConnectionImpl)
+         }
       }
       interactiveSessionManager.registerSender(this)
    }
