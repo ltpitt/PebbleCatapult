@@ -25,6 +25,7 @@ static char interactive_message[129];
 static char interactive_ids[32][33];
 static char interactive_values[32][65];
 static bool interactive_received[32];
+static bool interactive_completed;
 static TextLayer* interactive_title_layer;
 static TextLayer* interactive_message_layer;
 
@@ -63,11 +64,6 @@ static void interactive_unload(Window* window)
     interactive_title_layer = NULL;
     interactive_message_layer = NULL;
     interactive_window = NULL;
-    interactive_count = 0;
-    interactive_total = 0;
-    interactive_confirmation = false;
-    interactive_title[0] = '\0';
-    interactive_message[0] = '\0';
     window_destroy(window);
 }
 static void interactive_send(uint32_t packet, const char* id, const char* value);
@@ -86,6 +82,7 @@ static void interactive_clear_window()
     interactive_count = 0;
     interactive_total = 0;
     interactive_confirmation = false;
+    interactive_completed = false;
     for (uint8_t i = 0; i < 32; i++) interactive_received[i] = false;
 }
 
@@ -215,6 +212,12 @@ static void show_interactive(const DictionaryIterator* received)
             for (uint8_t i = 0; i < 32; i++) interactive_received[i] = false;
             interactive_count = 0;
             interactive_total = 0;
+            interactive_completed = false;
+        }
+        const bool duplicate_completed = interactive_completed && incoming_session == interactive_session;
+        if (duplicate_completed && packet->value->uint32 != interactive_packet) {
+            interactive_send_error(incoming_session, "Conflicting interactive request");
+            return;
         }
         interactive_session = incoming_session;
         interactive_packet = packet->value->uint32;
@@ -246,6 +249,10 @@ static void show_interactive(const DictionaryIterator* received)
         if (!title || title->type != TUPLE_CSTRING ||
             interactive_bounded_strlen(title->value->cstring, sizeof(interactive_title)) >= sizeof(interactive_title)) {
             interactive_send_error(incoming_session, "Invalid interactive title");
+            return;
+        }
+        if (duplicate_completed && strcmp(interactive_title, title->value->cstring) != 0) {
+            interactive_send_error(incoming_session, "Conflicting interactive request");
             return;
         }
         strncpy(interactive_title, title->value->cstring, sizeof(interactive_title) - 1);
@@ -313,6 +320,10 @@ static void show_interactive(const DictionaryIterator* received)
                 interactive_send_error(incoming_session, "Invalid confirmation message");
                 return;
             }
+            if (duplicate_completed && strcmp(interactive_message, message->value->cstring) != 0) {
+                interactive_send_error(incoming_session, "Conflicting interactive request");
+                return;
+            }
             strncpy(interactive_message, message->value->cstring, sizeof(interactive_message) - 1);
             interactive_message[sizeof(interactive_message) - 1] = '\0';
             Tuple* sequence = dict_find(received, 3);
@@ -326,6 +337,8 @@ static void show_interactive(const DictionaryIterator* received)
             }
             interactive_count = 0;
         }
+        if (duplicate_completed) return;
+        interactive_completed = true;
         if (interactive_window) window_stack_pop(false);
         interactive_window = window_create();
         Layer* root = window_get_root_layer(interactive_window);
