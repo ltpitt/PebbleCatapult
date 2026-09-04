@@ -46,14 +46,15 @@ class WatchappConnectionImpl(
    private var watchBufferSize: Int = 0
 
    init {
+      interactiveSessionManager.registerSender(this)
       coroutineScope.launch {
          try {
             packetQueue.runQueue()
          } finally {
+             interactiveSessionManager.cancelActive("Watch connection closed")
             interactiveSessionManager.unregisterSender(this@WatchappConnectionImpl)
          }
       }
-      interactiveSessionManager.registerSender(this)
    }
 
    override suspend fun sendInteractivePackets(packets: List<PebbleDictionary>) {

@@ -43,6 +43,7 @@ static void interactive_click_config(void* context)
 {
     menu_layer_set_click_config_onto_window(interactive_menu, interactive_window);
     window_single_click_subscribe(BUTTON_ID_SELECT, interactive_select);
+    window_single_click_subscribe(BUTTON_ID_BACK, interactive_select);
 }
 
 static void interactive_unload(Window* window)
@@ -50,7 +51,13 @@ static void interactive_unload(Window* window)
     menu_layer_destroy(interactive_menu);
     if (interactive_title_layer) text_layer_destroy(interactive_title_layer);
     if (interactive_message_layer) text_layer_destroy(interactive_message_layer);
+    interactive_menu = NULL;
+    interactive_title_layer = NULL;
+    interactive_message_layer = NULL;
     interactive_window = NULL;
+    interactive_count = 0;
+    interactive_total = 0;
+    interactive_confirmation = false;
     window_destroy(window);
 }
 static void interactive_send(uint32_t packet, const char* id, const char* value);
@@ -136,7 +143,9 @@ static void interactive_send(uint32_t packet, const char* id, const char* value)
 static void interactive_select(ClickRecognizerRef recognizer, void* context)
     {
         MenuIndex index = menu_layer_get_selected_index(interactive_menu);
-        if (interactive_confirmation)
+        if (recognizer && click_recognizer_get_button_id(recognizer) == BUTTON_ID_BACK)
+            interactive_send(10, NULL, NULL);
+        else if (interactive_confirmation)
             interactive_send(9, NULL, index.row == 0 ? "accepted" : NULL);
         else
             interactive_send(8, interactive_ids[index.row], interactive_values[index.row]);
@@ -173,7 +182,13 @@ static void show_interactive(const DictionaryIterator* received)
             Tuple* count = dict_find(received, 6);
             Tuple* id = dict_find(received, 8);
             Tuple* value = dict_find(received, 7);
-            if (count) interactive_count = count->value->uint8;
+            if (count) {
+                if (count->value->uint8 > 32) {
+                    interactive_send(10, NULL, NULL);
+                    return;
+                }
+                interactive_count = count->value->uint8;
+            }
             Tuple* sequence_tuple = dict_find(received, 3);
             Tuple* total_tuple = dict_find(received, 4);
             if (id && value && sequence_tuple && total_tuple && interactive_count <= 32) {

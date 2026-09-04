@@ -75,6 +75,7 @@ class WatchappConnectionImplTest {
    private class RecordingInteractiveSessionManager : InteractiveSessionManager {
       val results = mutableListOf<Pair<UInt, InteractiveTaskerResult>>()
       var activeSessionId: UInt? = 42u
+      var completedActiveSession = false
 
       override suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult =
          error("Not used")
@@ -84,7 +85,8 @@ class WatchappConnectionImplTest {
       override fun cancelActive(reason: String) = Unit
 
       override suspend fun acceptResult(sessionId: UInt, result: InteractiveTaskerResult) {
-         if (sessionId == activeSessionId) results += sessionId to result
+         results += sessionId to result
+         if (sessionId == activeSessionId) completedActiveSession = true
       }
    }
 
@@ -330,7 +332,10 @@ class WatchappConnectionImplTest {
    fun `Ignore stale interactive response without completing a session`() = scope.runTest {
       connection.onPacketReceived(InteractiveWatchMessage.ListSelection(41u, "home", "Home").toPacket(256))
 
-      interactiveSessionManager.results.shouldBeEmpty()
+      interactiveSessionManager.results shouldContainExactly listOf(
+         41u to InteractiveTaskerResult.Selection("home", "Home"),
+      )
+      interactiveSessionManager.completedActiveSession shouldBe false
    }
 
    @Test
