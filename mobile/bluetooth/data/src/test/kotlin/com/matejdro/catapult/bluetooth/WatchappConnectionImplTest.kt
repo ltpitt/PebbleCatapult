@@ -166,6 +166,16 @@ class WatchappConnectionImplTest {
    }
 
    @Test
+   fun `Reject invalid notification vibration before packet dispatch`() = scope.runTest {
+      val exception = assertThrows<IllegalArgumentException> {
+         connection.sendNotification("Title", "Body", 3, 5_000)
+      }
+
+      exception.message shouldBe "Invalid vibration value"
+      sender.sentData.shouldBeEmpty()
+   }
+
+   @Test
    fun `Unsupported inbound notification packet is rejected`() = scope.runTest {
       val result = connection.onPacketReceived(
          mapOf(

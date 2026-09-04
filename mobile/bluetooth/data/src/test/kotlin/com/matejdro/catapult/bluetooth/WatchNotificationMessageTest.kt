@@ -22,18 +22,23 @@ class WatchNotificationMessageTest {
    fun `notification enforces utf8 and duration bounds`() {
       shouldThrow<IllegalArgumentException> {
          WatchNotificationMessage.Show("é".repeat(33), "body", WatchNotificationMessage.Vibration.NONE, 0)
-      }
+      }.message shouldBe "Notification title is too long"
+      shouldThrow<IllegalArgumentException> {
+         WatchNotificationMessage.Show("title", "é".repeat(65), WatchNotificationMessage.Vibration.NONE, 0)
+      }.message shouldBe "Notification body is too long"
       shouldThrow<IllegalArgumentException> {
          WatchNotificationMessage.Show("title", "body", WatchNotificationMessage.Vibration.NONE, -1)
-      }
+      }.message shouldBe "Notification duration is out of range"
       shouldThrow<IllegalArgumentException> {
          WatchNotificationMessage.Show("title", "body", WatchNotificationMessage.Vibration.NONE, 300_001)
-      }
+      }.message shouldBe "Notification duration is out of range"
    }
 
    @Test
-   fun `notification packet must be strictly below buffer`() {
+   fun `notification packet rejects payload overflow`() {
       val message = WatchNotificationMessage.Show("title", "body", WatchNotificationMessage.Vibration.NONE, 0)
-      shouldThrow<IllegalArgumentException> { message.toPacket(1) }
+      shouldThrow<IllegalArgumentException> {
+         message.toPacket(40)
+      }.message shouldBe "Notification packet exceeds watch buffer (45 >= 40)"
    }
 }
