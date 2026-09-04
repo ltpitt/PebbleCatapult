@@ -16,16 +16,26 @@ typedef struct {
 
 static Notification* active;
 
-static void cancel_timer(Notification* notification)
+static void cancel_timer(void* context)
 {
+    Notification* notification = context;
     if (notification->timer) {
         app_timer_cancel(notification->timer);
         notification->timer = NULL;
     }
 }
 
-static void dismiss_click(ClickRecognizerRef recognizer, void* context)
+static void back_click(ClickRecognizerRef recognizer, void* context)
 {
+    Notification* notification = context;
+    notification_lifecycle_back(&notification->lifecycle);
+    window_notification_dismiss();
+}
+
+static void select_click(ClickRecognizerRef recognizer, void* context)
+{
+    Notification* notification = context;
+    notification_lifecycle_select(&notification->lifecycle);
     window_notification_dismiss();
 }
 
@@ -33,8 +43,8 @@ static void click_config(void* context)
 {
     Notification* notification = context;
     scroll_layer_set_click_config_onto_window(notification->scroll_layer, notification->window);
-    window_single_click_subscribe(BUTTON_ID_BACK, dismiss_click);
-    window_single_click_subscribe(BUTTON_ID_SELECT, dismiss_click);
+    window_single_click_subscribe(BUTTON_ID_BACK, back_click);
+    window_single_click_subscribe(BUTTON_ID_SELECT, select_click);
 }
 
 static void dismiss_timer(void* context)
@@ -51,6 +61,7 @@ static void dismiss_timer(void* context)
 static void unload(Window* window)
 {
     Notification* notification = window_get_user_data(window);
+    notification_lifecycle_unload(&notification->lifecycle);
     cancel_timer(notification);
     text_layer_destroy(notification->title_layer);
     text_layer_destroy(notification->body_layer);
@@ -64,7 +75,6 @@ void window_notification_dismiss(void)
 {
     if (active) {
         notification_lifecycle_dismiss(&active->lifecycle);
-        cancel_timer(active);
         window_stack_pop(false);
     }
 }
@@ -82,7 +92,8 @@ void window_notification_show(const char* title, const char* body,
 
     Notification* notification = calloc(1, sizeof(*notification));
     if (!notification) return;
-    notification_lifecycle_init(&notification->lifecycle);
+    notification_lifecycle_init_with_cancel_timer(
+        &notification->lifecycle, cancel_timer, notification);
     strncpy(notification->title, title, sizeof(notification->title) - 1);
     strncpy(notification->body, body, sizeof(notification->body) - 1);
 
