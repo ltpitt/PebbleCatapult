@@ -4,30 +4,28 @@
 #include <pebble.h>
 
 #include "../ui/window_status.h"
+#include "../ui/window_interactive_list.h"
+#include "../ui/window_interactive_confirm.h"
 
 static void receive_phone_welcome(const DictionaryIterator* iterator);
 static void receive_sync_restart(const DictionaryIterator* iterator);
 static void receive_sync_next_packet(const DictionaryIterator* iterator);
 static void receive_watch_packet(const DictionaryIterator* received);
 static void show_interactive(const DictionaryIterator* received);
-static void interactive_select(ClickRecognizerRef recognizer, void* context);
+static void interactive_send(uint32_t packet, const char* id, const char* value);
+static void interactive_send_error(uint32_t session, const char* reason);
 
 static uint8_t active_buckets_holder[MAX_BUCKETS];
-static Window* interactive_window;
-static MenuLayer* interactive_menu;
 static uint32_t interactive_session;
 static uint32_t interactive_packet;
 static uint16_t interactive_total;
 static uint8_t interactive_count;
-static bool interactive_confirmation;
 static char interactive_title[65];
 static char interactive_message[129];
 static char interactive_ids[32][33];
 static char interactive_values[32][65];
 static bool interactive_received[32];
 static bool interactive_completed;
-static TextLayer* interactive_title_layer;
-static TextLayer* interactive_message_layer;
 
 static size_t interactive_bounded_strlen(const char* value, size_t limit)
 {
@@ -36,39 +34,6 @@ static size_t interactive_bounded_strlen(const char* value, size_t limit)
     return length;
 }
 
-static uint16_t interactive_rows(MenuLayer* menu, uint16_t section, void* context)
-{
-    return interactive_confirmation ? 2 : interactive_count;
-}
-
-static void interactive_draw(GContext* ctx, const Layer* cell, MenuIndex* index, void* context)
-{
-    menu_cell_basic_draw(ctx, cell,
-        interactive_confirmation ? (index->row == 0 ? "Accept" : "Cancel") : interactive_values[index->row],
-        interactive_confirmation ? NULL : interactive_ids[index->row], NULL);
-}
-
-static void interactive_click_config(void* context)
-{
-    menu_layer_set_click_config_onto_window(interactive_menu, interactive_window);
-    window_single_click_subscribe(BUTTON_ID_SELECT, interactive_select);
-    window_single_click_subscribe(BUTTON_ID_BACK, interactive_select);
-}
-
-static void interactive_unload(Window* window)
-{
-    menu_layer_destroy(interactive_menu);
-    if (interactive_title_layer) text_layer_destroy(interactive_title_layer);
-    if (interactive_message_layer) text_layer_destroy(interactive_message_layer);
-    interactive_menu = NULL;
-    interactive_title_layer = NULL;
-    interactive_message_layer = NULL;
-    interactive_window = NULL;
-    window_destroy(window);
-}
-static void interactive_send(uint32_t packet, const char* id, const char* value);
-static void interactive_send_error(uint32_t session, const char* reason);
-
 static bool interactive_uint_tuple_width(const Tuple* tuple, uint16_t width)
 {
     return tuple && tuple->type == TUPLE_UINT && tuple->length == width;
@@ -76,12 +41,12 @@ static bool interactive_uint_tuple_width(const Tuple* tuple, uint16_t width)
 
 static void interactive_clear_window()
 {
-    if (interactive_window) window_stack_pop(false);
+    window_interactive_list_dismiss();
+    window_interactive_confirm_dismiss();
     interactive_session = 0;
     interactive_packet = 0;
     interactive_count = 0;
     interactive_total = 0;
-    interactive_confirmation = false;
     interactive_completed = false;
     for (uint8_t i = 0; i < 32; i++) interactive_received[i] = false;
 }
@@ -175,17 +140,10 @@ static void interactive_send_error(uint32_t session, const char* reason)
     interactive_session = previous_session;
 }
 
-static void interactive_select(ClickRecognizerRef recognizer, void* context)
-    {
-        MenuIndex index = menu_layer_get_selected_index(interactive_menu);
-        if (recognizer && click_recognizer_get_button_id(recognizer) == BUTTON_ID_BACK)
-            interactive_send(10, NULL, NULL);
-        else if (interactive_confirmation)
-            interactive_send(9, NULL, index.row == 0 ? "accepted" : NULL);
-        else
-            interactive_send(8, interactive_ids[index.row], interactive_values[index.row]);
-        window_stack_pop(true);
-    }
+static void interactive_selection(uint32_t session, const char* id, const char* value, void* context) { interactive_send(8, id, value); }
+static void interactive_confirmation_result(uint32_t session, bool accepted, void* context) { interactive_send(9, NULL, accepted ? "accepted" : NULL); }
+static void interactive_cancel(uint32_t session, void* context) { interactive_send_error(session, NULL); }
+static void interactive_display_error(uint32_t session, const char* reason, void* context) { interactive_send_error(session, reason); }
 
 static void show_interactive(const DictionaryIterator* received)
     {
@@ -257,7 +215,6 @@ static void show_interactive(const DictionaryIterator* received)
         }
         strncpy(interactive_title, title->value->cstring, sizeof(interactive_title) - 1);
         interactive_title[sizeof(interactive_title) - 1] = '\0';
-        interactive_confirmation = interactive_packet == 6;
         if (interactive_packet == 5) {
             Tuple* count = dict_find(received, 6);
             Tuple* id = dict_find(received, 8);
@@ -339,31 +296,14 @@ static void show_interactive(const DictionaryIterator* received)
         }
         if (duplicate_completed) return;
         interactive_completed = true;
-        if (interactive_window) window_stack_pop(false);
-        interactive_window = window_create();
-        Layer* root = window_get_root_layer(interactive_window);
-        GRect bounds = layer_get_bounds(root);
-        interactive_menu = menu_layer_create(bounds);
-        interactive_title_layer = text_layer_create(GRect(4, 2, bounds.size.w - 8, 24));
-        text_layer_set_text(interactive_title_layer, interactive_title);
-        text_layer_set_font(interactive_title_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD));
-        layer_add_child(root, text_layer_get_layer(interactive_title_layer));
-        if (interactive_confirmation) {
-            interactive_message_layer = text_layer_create(GRect(4, 27, bounds.size.w - 8, 36));
-            text_layer_set_text(interactive_message_layer, interactive_message);
-            text_layer_set_font(interactive_message_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-            layer_add_child(root, text_layer_get_layer(interactive_message_layer));
+        if (interactive_packet == 5) {
+            window_interactive_list_show(incoming_session, interactive_title,
+                (const char (*)[33])interactive_ids, (const char (*)[65])interactive_values,
+                interactive_count, interactive_selection, interactive_cancel, interactive_display_error, NULL);
+        } else {
+            window_interactive_confirm_show(incoming_session, interactive_title, interactive_message,
+                interactive_confirmation_result, interactive_cancel, interactive_display_error, NULL);
         }
-        bounds.origin.y += interactive_confirmation ? 64 : 26;
-        bounds.size.h -= interactive_confirmation ? 64 : 26;
-        layer_set_frame(menu_layer_get_layer(interactive_menu), bounds);
-        menu_layer_set_callbacks(interactive_menu, NULL, (MenuLayerCallbacks){
-            .get_num_rows = interactive_rows, .draw_row = interactive_draw
-        });
-        layer_add_child(root, menu_layer_get_layer(interactive_menu));
-        window_set_click_config_provider(interactive_window, interactive_click_config);
-        window_set_window_handlers(interactive_window, (WindowHandlers){ .unload = interactive_unload });
-        window_stack_push(interactive_window, true);
     }
 
 void receive_phone_welcome(const DictionaryIterator* iterator)
