@@ -12,7 +12,7 @@ static void receive_sync_restart(const DictionaryIterator* iterator);
 static void receive_sync_next_packet(const DictionaryIterator* iterator);
 static void receive_watch_packet(const DictionaryIterator* received);
 static void show_interactive(const DictionaryIterator* received);
-static void interactive_send(uint32_t packet, const char* id, const char* value);
+static void interactive_send(uint32_t packet, uint32_t session, const char* id, const char* value);
 static void interactive_send_error(uint32_t session, const char* reason);
 
 static uint8_t active_buckets_holder[MAX_BUCKETS];
@@ -39,10 +39,15 @@ static bool interactive_uint_tuple_width(const Tuple* tuple, uint16_t width)
     return tuple && tuple->type == TUPLE_UINT && tuple->length == width;
 }
 
-static void interactive_clear_window()
+static void interactive_dismiss_windows()
 {
     window_interactive_list_dismiss();
     window_interactive_confirm_dismiss();
+}
+
+static void interactive_clear_window()
+{
+    interactive_dismiss_windows();
     interactive_session = 0;
     interactive_packet = 0;
     interactive_count = 0;
@@ -116,12 +121,12 @@ static void receive_watch_packet(const DictionaryIterator* received)
     }
 }
 
-static void interactive_send(uint32_t packet, const char* id, const char* value)
+static void interactive_send(uint32_t packet, uint32_t session, const char* id, const char* value)
     {
         DictionaryIterator* iterator;
         app_message_outbox_begin(&iterator);
         dict_write_uint32(iterator, 0, packet);
-        dict_write_uint32(iterator, 1, interactive_session);
+        dict_write_uint32(iterator, 1, session);
         dict_write_uint32(iterator, 3, 0);
         dict_write_uint16(iterator, 4, 1);
         dict_write_uint8(iterator, 5, 1);
@@ -134,14 +139,11 @@ static void interactive_send(uint32_t packet, const char* id, const char* value)
 
 static void interactive_send_error(uint32_t session, const char* reason)
 {
-    const uint32_t previous_session = interactive_session;
-    interactive_session = session;
-    interactive_send(10, NULL, reason);
-    interactive_session = previous_session;
+    interactive_send(10, session, NULL, reason);
 }
 
-static void interactive_selection(uint32_t session, const char* id, const char* value, void* context) { interactive_send(8, id, value); }
-static void interactive_confirmation_result(uint32_t session, bool accepted, void* context) { interactive_send(9, NULL, accepted ? "accepted" : NULL); }
+static void interactive_selection(uint32_t session, const char* id, const char* value, void* context) { interactive_send(8, session, id, value); }
+static void interactive_confirmation_result(uint32_t session, bool accepted, void* context) { interactive_send(9, session, NULL, accepted ? "accepted" : NULL); }
 static void interactive_cancel(uint32_t session, void* context) { interactive_send_error(session, NULL); }
 static void interactive_display_error(uint32_t session, const char* reason, void* context) { interactive_send_error(session, reason); }
 
@@ -296,6 +298,7 @@ static void show_interactive(const DictionaryIterator* received)
         }
         if (duplicate_completed) return;
         interactive_completed = true;
+        interactive_dismiss_windows();
         if (interactive_packet == 5) {
             window_interactive_list_show(incoming_session, interactive_title,
                 (const char (*)[33])interactive_ids, (const char (*)[65])interactive_values,

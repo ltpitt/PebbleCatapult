@@ -34,6 +34,11 @@ static uint16_t rows(MenuLayer* menu, uint16_t section, void* context)
     return ((InteractiveList*)context)->count;
 }
 
+static int16_t cell_height(MenuLayer* menu, MenuIndex* index, void* context)
+{
+    return 40;
+}
+
 static void draw(GContext* ctx, const Layer* cell, MenuIndex* index, void* context)
 {
     InteractiveList* list = context;
@@ -110,7 +115,8 @@ bool window_interactive_list_show(
     Layer* root = window_get_root_layer(list->window);
     GRect bounds = layer_get_bounds(root); bounds.origin.y += 26; bounds.size.h -= 26;
     layer_set_frame(menu_layer_get_layer(list->menu), bounds);
-    menu_layer_set_callbacks(list->menu, list, (MenuLayerCallbacks){ .get_num_rows = rows, .draw_row = draw });
+    menu_layer_set_callbacks(list->menu, list,
+        (MenuLayerCallbacks){ .get_num_rows = rows, .get_cell_height = cell_height, .draw_row = draw });
     layer_add_child(root, text_layer_get_layer(list->title_layer));
     layer_add_child(root, menu_layer_get_layer(list->menu));
     window_set_click_config_provider_with_context(list->window, click_config, list);
