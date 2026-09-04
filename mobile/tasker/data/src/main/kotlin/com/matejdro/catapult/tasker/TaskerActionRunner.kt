@@ -80,6 +80,7 @@ class TaskerActionRunner(
             request.body,
             request.vibration.ordinal,
             request.durationMs,
+            startWatchapp = { sender.startAppOnTheWatch(WATCHAPP_UUID) },
          )
       } catch (e: TaskerInvalidInputException) {
          throw e
