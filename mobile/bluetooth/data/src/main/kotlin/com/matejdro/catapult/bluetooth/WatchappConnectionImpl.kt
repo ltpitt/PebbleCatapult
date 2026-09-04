@@ -83,6 +83,7 @@ class WatchappConnectionImpl(
 
    override suspend fun sendNotification(notification: WatchNotificationMessage.Show) {
       withTimeout(NOTIFICATION_SEND_TIMEOUT) {
+         if (watchBufferSize <= 0) throw WatchConnectionUnavailableException()
          sendNotification(notification.toPacket(watchBufferSize))
       }
    }
@@ -279,3 +280,5 @@ private const val INTERACTIVE_SEND_TIMEOUT = 5_000L
 private const val NOTIFICATION_SEND_TIMEOUT = 5_000L
 
 private class InteractiveSendTimeoutException : Exception()
+
+class WatchConnectionUnavailableException : IllegalStateException("Watch connection is unavailable")

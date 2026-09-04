@@ -134,6 +134,9 @@ static void show_notification(const DictionaryIterator* received)
         APP_LOG(APP_LOG_LEVEL_ERROR, "Invalid notification packet");
         return;
     }
+    if (interactive_session != 0) {
+        interactive_send_error(interactive_session, "Interactive session replaced by notification");
+    }
     interactive_clear_window();
     window_notification_dismiss_all();
     window_notification_show(packet.title, packet.body, packet.vibration, packet.duration_ms);

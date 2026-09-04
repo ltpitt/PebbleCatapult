@@ -130,17 +130,14 @@ class WatchappConnectionImplTest {
       )
       runCurrent()
 
-      val exception = try {
+      val exception = assertThrows<WatchConnectionUnavailableException> {
          connection.sendNotification(
-            mapOf(
-               0u to PebbleDictionaryItem.UInt32(WatchNotificationMessage.PACKET_SHOW_NOTIFICATION),
+            WatchNotificationMessage.Show(
+               "Title", "Body", WatchNotificationMessage.Vibration.NONE, 5_000,
             )
          )
-         null
-      } catch (e: IllegalArgumentException) {
-         e
       }
-      exception.shouldBeInstanceOf<IllegalArgumentException>().message shouldBe "Watch connection is unavailable"
+      exception.message shouldBe "Watch connection is unavailable"
       sender.sentData shouldContainExactly listOf(
          mapOf(
             0u to PebbleDictionaryItem.UInt8(1u),
@@ -152,6 +149,25 @@ class WatchappConnectionImplTest {
             1u to PebbleDictionaryItem.UInt16(PROTOCOL_VERSION),
          )
       )
+   }
+
+   @Test
+   fun `Unsupported watch buffer fails notification as transport error`() = scope.runTest {
+      receiveStandardHelloPacket(bufferSize = 0u)
+      runCurrent()
+
+      val exception = assertThrows<WatchConnectionUnavailableException> {
+         connection.sendNotification(
+            WatchNotificationMessage.Show(
+               "Title", "Body", WatchNotificationMessage.Vibration.NONE, 5_000,
+            )
+         )
+      }
+
+      exception.message shouldBe "Watch connection is unavailable"
+      sender.sentData.none { packet ->
+         (packet[0u] as? PebbleDictionaryItem.UInt32)?.value == WatchNotificationMessage.PACKET_SHOW_NOTIFICATION
+      } shouldBe true
    }
 
    @Test
