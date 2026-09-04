@@ -100,6 +100,39 @@ static void test_invalid_vibration_and_duration(void)
     assert_rejected(&iterator);
 }
 
+static void test_wrong_packet_id(void)
+{
+    DictionaryIterator iterator;
+    valid_packet(&iterator);
+    values[0].uint32 = 12;
+    assert_rejected(&iterator);
+}
+
+static void test_malformed_utf8(void)
+{
+    static const unsigned char sequences[][5] = {
+        {0xc0, 0xaf, 0x00, 0x00, 0x00},
+        {0xe2, 0x82, 0x00, 0x00, 0x00},
+        {0xe2, 0x28, 0xa1, 0x00, 0x00},
+        {0xed, 0xa0, 0x80, 0x00, 0x00},
+        {0xf4, 0x90, 0x80, 0x80, 0x00},
+    };
+    static const uint16_t lengths[] = {3, 3, 4, 4, 5};
+
+    for (size_t i = 0; i < sizeof(lengths) / sizeof(lengths[0]); i++) {
+        DictionaryIterator iterator;
+        valid_packet(&iterator);
+        memcpy(title, sequences[i], lengths[i]);
+        tuples[3].length = lengths[i];
+        assert_rejected(&iterator);
+
+        valid_packet(&iterator);
+        memcpy(body, sequences[i], lengths[i]);
+        tuples[4].length = lengths[i];
+        assert_rejected(&iterator);
+    }
+}
+
 static void test_valid_packet(void)
 {
     DictionaryIterator iterator;
@@ -119,6 +152,8 @@ int main(void)
     test_oversized_text();
     test_embedded_nul();
     test_invalid_vibration_and_duration();
+    test_wrong_packet_id();
+    test_malformed_utf8();
     test_valid_packet();
     return 0;
 }
