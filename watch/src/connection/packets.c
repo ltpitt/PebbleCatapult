@@ -1,4 +1,5 @@
 #include "packets.h"
+#include "notification_packet.h"
 #include "commons/connection/bluetooth.h"
 #include "commons/connection/bucket_sync.h"
 #include <pebble.h>
@@ -6,12 +7,14 @@
 #include "../ui/window_status.h"
 #include "../ui/window_interactive_list.h"
 #include "../ui/window_interactive_confirm.h"
+#include "../ui/window_notification.h"
 
 static void receive_phone_welcome(const DictionaryIterator* iterator);
 static void receive_sync_restart(const DictionaryIterator* iterator);
 static void receive_sync_next_packet(const DictionaryIterator* iterator);
 static void receive_watch_packet(const DictionaryIterator* received);
 static void show_interactive(const DictionaryIterator* received);
+static void show_notification(const DictionaryIterator* received);
 static void interactive_send(uint32_t packet, uint32_t session, const char* id, const char* value);
 static void interactive_send_error(uint32_t session, const char* reason);
 
@@ -41,6 +44,7 @@ static bool interactive_uint_tuple_width(const Tuple* tuple, uint16_t width)
 
 static void interactive_dismiss_windows()
 {
+    window_notification_dismiss_all();
     window_interactive_list_dismiss();
     window_interactive_confirm_dismiss();
 }
@@ -116,9 +120,27 @@ static void receive_watch_packet(const DictionaryIterator* received)
     case 7:
         show_interactive(received);
         break;
+    case 11:
+        show_notification(received);
+        break;
     default:
         break;
     }
+}
+
+static void show_notification(const DictionaryIterator* received)
+{
+    NotificationPacket packet;
+    if (!decode_notification_packet(received, &packet)) {
+        APP_LOG(APP_LOG_LEVEL_ERROR, "Invalid notification packet");
+        return;
+    }
+    if (interactive_session != 0) {
+        interactive_send_error(interactive_session, "Interactive session replaced by notification");
+    }
+    interactive_clear_window();
+    window_notification_dismiss_all();
+    window_notification_show(packet.title, packet.body, packet.vibration, packet.duration_ms);
 }
 
 static void interactive_send(uint32_t packet, uint32_t session, const char* id, const char* value)

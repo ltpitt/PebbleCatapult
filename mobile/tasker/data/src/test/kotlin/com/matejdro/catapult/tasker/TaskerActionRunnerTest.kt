@@ -11,12 +11,15 @@ import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.throwable.shouldHaveMessage
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import io.rebble.pebblekit2.common.model.TimelineLayout
 import io.rebble.pebblekit2.common.model.TimelineLayoutType
 import io.rebble.pebblekit2.common.model.TimelinePin
 import io.rebble.pebblekit2.common.model.WatchIdentifier
 import io.rebble.pebblekit2.model.Watchapp
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
@@ -47,6 +50,8 @@ class TaskerActionRunnerTest {
 
    private class RecordingInteractiveSessionManager : InteractiveSessionManager {
       val requests = mutableListOf<InteractiveTaskerRequest>()
+      val notifications = mutableListOf<NotificationRequest>()
+      var notificationFailure: Throwable? = null
       override fun registerSender(sender: InteractiveRequestSender) = Unit
       override suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult {
          requests += request
@@ -58,7 +63,85 @@ class TaskerActionRunnerTest {
          }
       }
       override fun cancelActive(reason: String) = Unit
+      override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+         notificationFailure?.let { throw it }
+         notifications += NotificationRequest(title, body, VibrationStyle.entries[vibration], durationMs)
+      }
       override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) = Unit
+   }
+
+   @Test
+   fun `Runner recognizes send notification action before deferred dispatch`() = scope.runTest {
+      val bundle = Bundle().apply {
+         putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
+         putString(BundleKeys.TITLE, "Door")
+         putString(BundleKeys.MESSAGE, "Front door opened")
+         putString(BundleKeys.NOTIFICATION_VIBRATION, "short")
+         putLong(BundleKeys.NOTIFICATION_DURATION_MS, 5_000)
+      }
+
+      runner.run(bundle) shouldBe InteractiveTaskerResult.Success
+      interactiveManager.notifications.single() shouldBe
+         NotificationRequest("Door", "Front door opened", VibrationStyle.SHORT, 5_000)
+      NotificationRequest.fromBundle(bundle) shouldBe
+         NotificationRequest("Door", "Front door opened", VibrationStyle.SHORT, 5_000)
+   }
+
+   @Test
+   fun `Notification duration defaults to 5000 ms and preserves explicit zero`() = scope.runTest {
+      NotificationRequest.fromBundle(Bundle()).durationMs shouldBe 5_000
+
+      NotificationRequest.fromBundle(Bundle().apply {
+         putLong(BundleKeys.NOTIFICATION_DURATION_MS, 0)
+      }).durationMs shouldBe 0
+   }
+
+   @Test
+   fun `Preserve notification transport failures`() = scope.runTest {
+      val failure = IllegalStateException("Disconnected")
+      interactiveManager.notificationFailure = failure
+
+      shouldThrow<IllegalStateException> {
+         runner.run(Bundle().apply {
+            putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
+            putString(BundleKeys.TITLE, "Door")
+         })
+      }.shouldBeSameInstanceAs(failure)
+   }
+
+   @Test
+   fun `Rethrow notification cancellation`() = scope.runTest {
+      val cancellation = CancellationException("Cancelled")
+      interactiveManager.notificationFailure = cancellation
+
+      shouldThrow<CancellationException> {
+         runner.run(Bundle().apply {
+            putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
+            putString(BundleKeys.TITLE, "Door")
+         })
+      }.shouldBeSameInstanceAs(cancellation)
+   }
+
+   @Test
+   fun `Reject unsupported notification vibration values`() = scope.runTest {
+      val bundle = Bundle().apply {
+         putString(BundleKeys.TITLE, "Door")
+         putString(BundleKeys.MESSAGE, "Front door opened")
+         putString(BundleKeys.NOTIFICATION_VIBRATION, "unsupported")
+      }
+
+      shouldThrow<TaskerInvalidInputException> {
+         NotificationRequest.fromBundle(bundle)
+      }
+   }
+
+   @Test
+   fun `Allow explicit no vibration`() = scope.runTest {
+      val bundle = Bundle().apply {
+         putString(BundleKeys.NOTIFICATION_VIBRATION, "none")
+      }
+
+      NotificationRequest.fromBundle(bundle).vibration shouldBe VibrationStyle.NONE
    }
 
    @Test

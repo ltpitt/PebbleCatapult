@@ -1,6 +1,8 @@
 package com.matejdro.catapult.tasker
 
 sealed interface InteractiveTaskerResult {
+    data object Success : InteractiveTaskerResult
+
    data class Selection(
       val id: String,
       val value: String,

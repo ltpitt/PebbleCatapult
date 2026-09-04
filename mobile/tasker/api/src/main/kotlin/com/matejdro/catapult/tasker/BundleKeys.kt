@@ -17,4 +17,6 @@ object BundleKeys {
    const val ITEMS = "ITEMS"
    const val MESSAGE = "MESSAGE"
    const val TIMEOUT_MS = "TIMEOUT_MS"
+   const val NOTIFICATION_VIBRATION = "NOTIFICATION_VIBRATION"
+   const val NOTIFICATION_DURATION_MS = "NOTIFICATION_DURATION_MS"
 }

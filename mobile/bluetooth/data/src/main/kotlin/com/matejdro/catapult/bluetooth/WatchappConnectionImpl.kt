@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withTimeout
 import logcat.logcat
 
 @Inject
@@ -61,9 +62,29 @@ class WatchappConnectionImpl(
       val sent = withTimeoutOrNull(INTERACTIVE_SEND_TIMEOUT) {
          packets.forEach { packetQueue.sendPacket(it) }
       }
+
       if (sent == null) {
          logcat { "Interactive request could not be sent before the connection timed out" }
          throw InteractiveSendTimeoutException()
+      }
+   }
+
+   override suspend fun sendNotification(packet: PebbleDictionary) {
+      val limit = watchBufferSize
+      require(limit > 0) { "Watch connection is unavailable" }
+      packetQueue.sendPacket(packet)
+   }
+
+   override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+      val style = WatchNotificationMessage.Vibration.entries.getOrNull(vibration)
+        ?: throw IllegalArgumentException("Invalid vibration value")
+      sendNotification(WatchNotificationMessage.Show(title, body, style, durationMs))
+   }
+
+   override suspend fun sendNotification(notification: WatchNotificationMessage.Show) {
+      withTimeout(NOTIFICATION_SEND_TIMEOUT) {
+         if (watchBufferSize <= 0) throw WatchConnectionUnavailableException()
+         sendNotification(notification.toPacket(watchBufferSize))
       }
    }
 
@@ -171,6 +192,7 @@ class WatchappConnectionImpl(
    private suspend fun processWatchWelcomePacket(data: PebbleDictionary): ReceiveResult {
       val watchProtocolVersion = data.requireUint(1u)
       if (watchProtocolVersion != PROTOCOL_VERSION.toUInt()) {
+         watchBufferSize = 0
          logcat { "Mismatch protocol version $watchProtocolVersion" }
          packetQueue.sendPacket(
             mapOf(
@@ -255,5 +277,8 @@ private fun <K, V> mapOfNotNull(vararg pairs: Pair<K, V>?): Map<K, V> =
    pairs.filterNotNull().toMap()
 
 private const val INTERACTIVE_SEND_TIMEOUT = 5_000L
+private const val NOTIFICATION_SEND_TIMEOUT = 5_000L
 
 private class InteractiveSendTimeoutException : Exception()
+
+class WatchConnectionUnavailableException : IllegalStateException("Watch connection is unavailable")

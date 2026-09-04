@@ -7,4 +7,5 @@ enum class TaskerAction {
    DELETE_PIN,
    SHOW_LIST,
    SHOW_CONFIRMATION,
+   SEND_NOTIFICATION,
 }

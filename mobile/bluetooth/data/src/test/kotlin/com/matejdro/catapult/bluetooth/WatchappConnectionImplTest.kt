@@ -17,13 +17,18 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.rebble.pebblekit2.common.model.PebbleDictionaryItem
 import io.rebble.pebblekit2.common.model.ReceiveResult
 import io.rebble.pebblekit2.common.model.WatchIdentifier
 import kotlinx.coroutines.async
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import io.rebble.pebblekit2.common.model.TransmissionResult
 import si.inova.kotlinova.core.test.TestScopeWithDispatcherProvider
 import si.inova.kotlinova.core.test.time.virtualTimeProvider
 
@@ -111,6 +116,102 @@ class WatchappConnectionImplTest {
             1u to PebbleDictionaryItem.UInt16(PROTOCOL_VERSION),
          )
       )
+   }
+
+   @Test
+   fun `Previous protocol version cannot receive notifications`() = scope.runTest {
+      receiveStandardHelloPacket()
+      runCurrent()
+      connection.onPacketReceived(
+         mapOf(
+            0u to PebbleDictionaryItem.UInt32(0u),
+            1u to PebbleDictionaryItem.UInt32(PROTOCOL_VERSION - 1u),
+         )
+      )
+      runCurrent()
+
+      val exception = assertThrows<WatchConnectionUnavailableException> {
+         connection.sendNotification(
+            WatchNotificationMessage.Show(
+               "Title", "Body", WatchNotificationMessage.Vibration.NONE, 5_000,
+            )
+         )
+      }
+      exception.message shouldBe "Watch connection is unavailable"
+      sender.sentData shouldContainExactly listOf(
+         mapOf(
+            0u to PebbleDictionaryItem.UInt8(1u),
+            1u to PebbleDictionaryItem.UInt16(PROTOCOL_VERSION),
+            2u to PebbleDictionaryItem.Bytes(byteArrayOf(2)),
+         ),
+         mapOf(
+            0u to PebbleDictionaryItem.UInt8(1u),
+            1u to PebbleDictionaryItem.UInt16(PROTOCOL_VERSION),
+         )
+      )
+   }
+
+   @Test
+   fun `Unsupported watch buffer fails notification as transport error`() = scope.runTest {
+      receiveStandardHelloPacket(bufferSize = 0u)
+      runCurrent()
+
+      val exception = assertThrows<WatchConnectionUnavailableException> {
+         connection.sendNotification(
+            WatchNotificationMessage.Show(
+               "Title", "Body", WatchNotificationMessage.Vibration.NONE, 5_000,
+            )
+         )
+      }
+
+      exception.message shouldBe "Watch connection is unavailable"
+      sender.sentData.none { packet ->
+         (packet[0u] as? PebbleDictionaryItem.UInt32)?.value == WatchNotificationMessage.PACKET_SHOW_NOTIFICATION
+      } shouldBe true
+   }
+
+   @Test
+   fun `Current protocol version sends a notification packet`() = scope.runTest {
+      receiveStandardHelloPacket()
+      runCurrent()
+
+      connection.sendNotification(
+         WatchNotificationMessage.Show(
+            "Title", "Body", WatchNotificationMessage.Vibration.DOUBLE, 5_000,
+         )
+      )
+      sender.sentData.last() shouldBe mapOf(
+         0u to PebbleDictionaryItem.UInt32(11u),
+         2u to PebbleDictionaryItem.Text("Title"),
+         7u to PebbleDictionaryItem.Text("Body"),
+         6u to PebbleDictionaryItem.UInt8(2u),
+         8u to PebbleDictionaryItem.UInt32(5_000u),
+      )
+   }
+
+   @Test
+   fun `Reject invalid notification vibration before packet dispatch`() = scope.runTest {
+      val exception = assertThrows<IllegalArgumentException> {
+         connection.sendNotification("Title", "Body", 3, 5_000)
+      }
+
+      exception.message shouldBe "Invalid vibration value"
+      sender.sentData.shouldBeEmpty()
+   }
+
+   @Test
+   fun `Unsupported inbound notification packet is rejected`() = scope.runTest {
+      val result = connection.onPacketReceived(
+         mapOf(
+            0u to PebbleDictionaryItem.UInt32(11u),
+            2u to PebbleDictionaryItem.Text("Title"),
+            6u to PebbleDictionaryItem.UInt8(1u),
+            7u to PebbleDictionaryItem.Text("Body"),
+            8u to PebbleDictionaryItem.UInt32(5_000u),
+         )
+      )
+
+      result shouldBe ReceiveResult.Nack
    }
 
    @Test
@@ -346,6 +447,29 @@ class WatchappConnectionImplTest {
       interactiveSessionManager.results shouldContainExactly listOf(
          42u to InteractiveTaskerResult.Failed("Watch connection is unavailable"),
       )
+   }
+
+   @Test
+   fun `Timeout notification retries when watch is disconnected`() = scope.runTest {
+      receiveStandardHelloPacket()
+      runCurrent()
+      sender.sendingResult = TransmissionResult.FailedWatchNotConnected
+
+      val send = async {
+         connection.sendNotification(
+            WatchNotificationMessage.Show("Title", "Body", WatchNotificationMessage.Vibration.NONE, 0)
+         )
+      }
+      runCurrent()
+      advanceTimeBy(5_000)
+
+      val exception = try {
+         send.await()
+         null
+      } catch (e: TimeoutCancellationException) {
+         e
+      }
+      exception.shouldBeInstanceOf<TimeoutCancellationException>()
    }
 
    private suspend fun receiveStandardHelloPacket(
