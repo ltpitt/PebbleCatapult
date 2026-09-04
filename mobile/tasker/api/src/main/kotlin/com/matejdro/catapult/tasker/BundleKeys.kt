@@ -16,4 +16,5 @@ object BundleKeys {
    const val ONLY_ON_WATCHFACE = "ONLY_ON_WATCHFACE"
    const val ITEMS = "ITEMS"
    const val MESSAGE = "MESSAGE"
+   const val TIMEOUT_MS = "TIMEOUT_MS"
 }

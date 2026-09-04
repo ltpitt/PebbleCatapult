@@ -25,13 +25,16 @@ class InteractiveListScreen : Screen<InteractiveListScreenKey>() {
       val activity = LocalContext.current.requireActivity() as TaskerConfigurationActivity
       var title by remember { mutableStateOf(activity.existingData.getString(BundleKeys.TITLE).orEmpty()) }
       var items by remember { mutableStateOf(activity.existingData.getString(BundleKeys.ITEMS).orEmpty()) }
+      var timeout by remember { mutableStateOf(activity.existingData.getLong(BundleKeys.TIMEOUT_MS, 60_000L).toString()) }
       Column(Modifier.padding(16.dp)) {
          OutlinedTextField(title, { title = it }, label = { Text("Title") })
          OutlinedTextField(items, { items = it }, label = { Text("Items (id=value per line)") })
+         OutlinedTextField(timeout, { timeout = it }, label = { Text("Timeout (milliseconds)") })
          Button(onClick = { activity.saveConfiguration(Bundle().apply {
             putString(BundleKeys.ACTION, TaskerAction.SHOW_LIST.name)
             putString(BundleKeys.TITLE, title)
             putString(BundleKeys.ITEMS, items)
+            putLong(BundleKeys.TIMEOUT_MS, timeout.toLongOrNull() ?: 60_000L)
          }, title) }) { Text("Save") }
       }
    }
@@ -43,13 +46,16 @@ class InteractiveConfirmationScreen : Screen<InteractiveConfirmationScreenKey>()
       val activity = LocalContext.current.requireActivity() as TaskerConfigurationActivity
       var title by remember { mutableStateOf(activity.existingData.getString(BundleKeys.TITLE).orEmpty()) }
       var message by remember { mutableStateOf(activity.existingData.getString(BundleKeys.MESSAGE).orEmpty()) }
+      var timeout by remember { mutableStateOf(activity.existingData.getLong(BundleKeys.TIMEOUT_MS, 60_000L).toString()) }
       Column(Modifier.padding(16.dp)) {
          OutlinedTextField(title, { title = it }, label = { Text("Title") })
          OutlinedTextField(message, { message = it }, label = { Text("Message") })
+         OutlinedTextField(timeout, { timeout = it }, label = { Text("Timeout (milliseconds)") })
          Button(onClick = { activity.saveConfiguration(Bundle().apply {
             putString(BundleKeys.ACTION, TaskerAction.SHOW_CONFIRMATION.name)
             putString(BundleKeys.TITLE, title)
             putString(BundleKeys.MESSAGE, message)
+            putLong(BundleKeys.TIMEOUT_MS, timeout.toLongOrNull() ?: 60_000L)
          }, title) }) { Text("Save") }
       }
    }

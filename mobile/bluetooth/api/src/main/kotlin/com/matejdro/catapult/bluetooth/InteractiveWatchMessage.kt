@@ -90,7 +90,7 @@ sealed interface InteractiveWatchMessage {
       }
 
       internal fun validate() {
-         require(id.isNotEmpty()) { "Item id must not be empty" }
+         require(id.isNotBlank()) { "Item id must not be blank" }
          require(id.utf8Length() <= MAX_ITEM_ID_BYTES) { "Item id is too long" }
          require(value.utf8Length() <= MAX_ITEM_VALUE_BYTES) { "Item value is too long" }
       }

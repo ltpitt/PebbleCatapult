@@ -42,17 +42,18 @@ class WatchappConnectionImpl(
    private val packetQueue: PacketQueue,
    private val bucketSyncWatchLoop: BucketSyncWatchLoop,
    private val interactiveSessionManager: InteractiveSessionManager,
+   private val watch: WatchIdentifier,
 ) : WatchAppConnection, InteractiveRequestSender {
    private var watchBufferSize: Int = 0
 
    init {
-      interactiveSessionManager.registerSender(this)
+      interactiveSessionManager.registerSender(watch.toString(), this)
       coroutineScope.launch {
          try {
             packetQueue.runQueue()
          } finally {
-             interactiveSessionManager.cancelActive("Watch connection closed")
-            interactiveSessionManager.unregisterSender(this@WatchappConnectionImpl)
+            interactiveSessionManager.cancelActive(watch.toString(), "Watch connection closed")
+            interactiveSessionManager.unregisterSender(watch.toString(), this@WatchappConnectionImpl)
          }
       }
    }
@@ -81,7 +82,12 @@ class WatchappConnectionImpl(
            request.message,
         )
       }
+
       sendInteractiveRequest(message)
+   }
+
+   override suspend fun cancel(sessionId: UInt, reason: String) {
+      sendInteractiveRequest(InteractiveWatchMessage.Cancel(sessionId, reason))
    }
 
    override suspend fun onPacketReceived(data: PebbleDictionary): ReceiveResult {

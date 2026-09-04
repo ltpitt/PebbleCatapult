@@ -21,6 +21,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeParseException
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toKotlinInstant
 
 @Inject
@@ -52,12 +53,12 @@ class TaskerActionRunner(
          ?: throw TaskerInvalidInputException("Title is mandatory")
       val items = bundle.getString(BundleKeys.ITEMS).orEmpty().split('\n').map {
          val separator = it.indexOf('=')
-         if (separator <= 0 || separator == it.lastIndex) {
+         if (separator <= 0 || separator == it.lastIndex || it.substring(0, separator).isBlank()) {
            throw TaskerInvalidInputException("Items must use id=value format")
          }
          InteractiveTaskerRequest.Item(it.substring(0, separator), it.substring(separator + 1))
       }
-      val result = interactiveSessionManager.awaitResult(InteractiveTaskerRequest.List(title, items))
+      val result = interactiveSessionManager.awaitResult(InteractiveTaskerRequest.List(title, items), timeout(bundle))
       return result
    }
 
@@ -65,9 +66,12 @@ class TaskerActionRunner(
       val title = bundle.getString(BundleKeys.TITLE)?.takeIf { it.isNotBlank() }
          ?: throw TaskerInvalidInputException("Title is mandatory")
       val message = bundle.getString(BundleKeys.MESSAGE).orEmpty()
-      val result = interactiveSessionManager.awaitResult(InteractiveTaskerRequest.Confirmation(title, message))
+      val result = interactiveSessionManager.awaitResult(InteractiveTaskerRequest.Confirmation(title, message), timeout(bundle))
       return result
    }
+
+   private fun timeout(bundle: Bundle) =
+      bundle.getLong(BundleKeys.TIMEOUT_MS, 60_000L).coerceAtLeast(1L).milliseconds
 
    private suspend fun runToggleAction(bundle: Bundle) {
       val directoryId = bundle.getInt(BundleKeys.DIRECTORY_ID, 1)

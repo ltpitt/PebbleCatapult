@@ -58,6 +58,7 @@ class WatchappConnectionImplTest {
       packetQueue,
       bucketSyncWatchLoop,
       interactiveSessionManager,
+      watch,
    )
 
    @Test

@@ -113,7 +113,9 @@ void send_trigger_action(const uint16_t id, const char* name, const char* parame
 
 static void receive_watch_packet(const DictionaryIterator* received)
 {
-    const uint8_t packet_id = dict_find(received, 0)->value->uint8;
+    Tuple* packet_tuple = dict_find(received, 0);
+    if (!packet_tuple || packet_tuple->type != TUPLE_UINT) return;
+    const uint8_t packet_id = packet_tuple->value->uint8;
 
     switch (packet_id)
     {
@@ -146,7 +148,8 @@ static void interactive_send(uint32_t packet, const char* id, const char* value)
         dict_write_uint16(iterator, 4, 1);
         dict_write_uint8(iterator, 5, 1);
         if (id) dict_write_cstring(iterator, 8, id);
-        if (value) dict_write_cstring(iterator, 7, value);
+        if (value && packet != 10) dict_write_cstring(iterator, 7, value);
+        if (value && packet == 10) dict_write_cstring(iterator, 9, value);
         if (packet == 9) dict_write_uint8(iterator, 8, value != NULL);
         bluetooth_app_message_outbox_send();
     }
