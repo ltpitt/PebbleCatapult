@@ -80,7 +80,9 @@ class InteractiveSessionManagerImpl(
    }
 
    override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
-      val sender = synchronized(senders) { senders.values.firstOrNull() }
+      // Notifications have no watch selector, so use the connected watch with the lowest ID.
+      // Sorting avoids depending on connection/map insertion order when multiple watches are connected.
+      val sender = synchronized(senders) { senders.entries.minByOrNull { it.key }?.value }
          ?: error("Watch connection is unavailable")
       sender.sendNotification(title, body, vibration, durationMs)
    }

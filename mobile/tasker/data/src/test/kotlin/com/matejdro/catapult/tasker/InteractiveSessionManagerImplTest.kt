@@ -298,6 +298,27 @@ class InteractiveSessionManagerImplTest {
          InteractiveTaskerResult.Failed("send failed")
    }
 
+   @Test
+   fun `notification is sent to connected watch with lowest id`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val sentTo = mutableListOf<String>()
+      val sender = { watch: String ->
+         object : InteractiveRequestSender {
+           override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) = Unit
+           override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+              sentTo += watch
+           }
+         }
+      }
+
+      manager.registerSender("watch-2", sender("watch-2"))
+      manager.registerSender("watch-1", sender("watch-1"))
+
+      manager.sendNotification("Title", "Body", 0, 1_000)
+
+      sentTo shouldBe listOf("watch-1")
+   }
+
    private fun newManager() = InteractiveSessionManagerImpl(timeout = 1.seconds).also {
       it.registerSender(InteractiveRequestSender { _, _ -> })
    }

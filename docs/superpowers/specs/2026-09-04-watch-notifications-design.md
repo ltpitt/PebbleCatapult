@@ -25,7 +25,10 @@ receives a dispatch success/failure status and does not wait for user input.
 This is separate from interactive sessions and Timeline pins. Old watches
 negotiate the existing protocol version and do not receive notification
 packets. A disconnected watch, unsupported packet version, oversized text, or
-failed send produces an explicit Tasker failure.
+failed send produces an explicit Tasker failure. When multiple watches are
+connected, the notification is sent to the connected watch with the lowest
+watch ID; this deterministic fallback preserves the existing no-selector
+semantics without adding another Tasker field.
 
 ## Testing
 
