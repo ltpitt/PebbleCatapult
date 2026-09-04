@@ -127,17 +127,14 @@ class WatchappConnectionImplTest {
       )
       runCurrent()
 
-      var failed = false
-      try {
+      val exception = assertThrows<IllegalArgumentException> {
          connection.sendNotification(
-            WatchNotificationMessage.Show(
-               "Title", "Body", WatchNotificationMessage.Vibration.NONE, 0,
+            mapOf(
+               0u to PebbleDictionaryItem.UInt32(WatchNotificationMessage.PACKET_SHOW_NOTIFICATION),
             )
          )
-      } catch (_: IllegalArgumentException) {
-         failed = true
       }
-      failed shouldBe true
+      exception.message shouldBe "Watch connection is unavailable"
       sender.sentData shouldContainExactly listOf(
          mapOf(
             0u to PebbleDictionaryItem.UInt8(1u),

@@ -37,8 +37,10 @@ class WatchNotificationMessageTest {
    @Test
    fun `notification packet rejects payload overflow`() {
       val message = WatchNotificationMessage.Show("title", "body", WatchNotificationMessage.Vibration.NONE, 0)
-      shouldThrow<IllegalArgumentException> {
-         message.toPacket(40)
-      }.message shouldBe "Notification packet exceeds watch buffer (45 >= 40)"
+      val exception = shouldThrow<IllegalArgumentException> {
+         message.toPacket(56)
+      }
+
+      exception.message shouldBe "Notification packet exceeds watch buffer (56 >= 56)"
    }
 }
