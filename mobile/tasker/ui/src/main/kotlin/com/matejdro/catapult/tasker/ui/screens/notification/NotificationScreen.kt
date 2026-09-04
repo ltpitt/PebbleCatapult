@@ -8,8 +8,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -57,13 +60,7 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
 
       fun save() {
          val durationMs = duration.toLongOrNull()
-         error = when {
-            title.isBlank() -> "Title cannot be blank"
-            durationMs == null -> "Duration must be a whole number of milliseconds"
-            durationMs < 0 -> "Duration cannot be negative"
-            durationMs > MAX_DURATION_MS -> "Duration cannot exceed 300000 milliseconds"
-            else -> null
-         }
+         error = validateNotification(title, duration)
          if (error != null) return
 
          activity.saveConfiguration(
@@ -86,15 +83,33 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
          vibration = vibration,
          duration = duration,
          error = error,
-         setTitle = { title = it },
+         setTitle = {
+            title = it
+            error = validateNotification(title, duration)
+         },
          setBody = { body = it },
          setVibration = { vibration = it },
-         setDuration = { duration = it },
+         setDuration = {
+            duration = it
+            error = validateNotification(title, duration)
+         },
          save = ::save,
       )
    }
+
+   private fun validateNotification(title: String, duration: String): String? {
+      val durationMs = duration.toLongOrNull()
+      return when {
+         title.isBlank() -> "Title cannot be blank"
+         durationMs == null -> "Duration must be a whole number of milliseconds"
+         durationMs < 0 -> "Duration cannot be negative"
+         durationMs > MAX_DURATION_MS -> "Duration cannot exceed 300000 milliseconds"
+         else -> null
+      }
+   }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NotificationScreenContent(
    title: String,
@@ -129,20 +144,23 @@ private fun NotificationScreenContent(
          label = { Text("Body") },
          modifier = Modifier.fillMaxWidth(),
       )
-      Column {
+      ExposedDropdownMenuBox(
+         expanded = vibrationMenuExpanded,
+         onExpandedChange = { vibrationMenuExpanded = !vibrationMenuExpanded },
+      ) {
          OutlinedTextField(
             value = vibration,
             onValueChange = {},
             label = { Text("Vibration") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+               .fillMaxWidth()
+               .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
             readOnly = true,
             trailingIcon = {
-               androidx.compose.material3.TextButton(onClick = { vibrationMenuExpanded = true }) {
-                  Text("Select")
-               }
+               ExposedDropdownMenuDefaults.TrailingIcon(expanded = vibrationMenuExpanded)
             },
          )
-         DropdownMenu(
+         ExposedDropdownMenu(
             expanded = vibrationMenuExpanded,
             onDismissRequest = { vibrationMenuExpanded = false },
          ) {
