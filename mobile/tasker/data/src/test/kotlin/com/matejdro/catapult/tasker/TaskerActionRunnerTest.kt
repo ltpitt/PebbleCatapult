@@ -73,7 +73,9 @@ class TaskerActionRunnerTest {
 
       shouldThrow<IllegalStateException> {
          runner.run(bundle)
-      }.shouldHaveMessage("Unsupported action: SEND_NOTIFICATION")
+      }.shouldHaveMessage(
+         "SEND_NOTIFICATION is temporarily unsupported until notification transport is implemented",
+      )
 
       NotificationRequest.fromBundle(bundle) shouldBe
          NotificationRequest("Door", "Front door opened", VibrationStyle.SHORT, 5_000)

@@ -45,7 +45,9 @@ class TaskerActionRunner(
          TaskerAction.DELETE_PIN -> runDeletePin(bundle).let { null }
          TaskerAction.SHOW_LIST -> runInteractiveList(bundle)
          TaskerAction.SHOW_CONFIRMATION -> runInteractiveConfirmation(bundle)
-         else -> error("Unsupported action: $action")
+         TaskerAction.SEND_NOTIFICATION -> error(
+            "SEND_NOTIFICATION is temporarily unsupported until notification transport is implemented",
+         )
       }
    }
 
