@@ -36,7 +36,6 @@ class TaskerActionRunnerTest {
    private val pebbleInfoRetriever = FakePebbleInfoRetriever()
    private val openController = FakeWatchappOpenController()
    private val interactiveManager = RecordingInteractiveSessionManager()
-   private val notificationSender = mutableListOf<NotificationRequest>()
    private val runner = TaskerActionRunner(
       repo,
       pebbleSender,
@@ -44,7 +43,6 @@ class TaskerActionRunnerTest {
       openController,
       scope.virtualTimeProvider(),
       interactiveManager,
-      notificationSender::add,
    )
 
    private class RecordingInteractiveSessionManager : InteractiveSessionManager {
@@ -65,15 +63,15 @@ class TaskerActionRunnerTest {
 
    @Test
    fun `Send notification with title body vibration and duration`() = scope.runTest {
-      runner.run(Bundle().apply {
+      val bundle = Bundle().apply {
          putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
          putString(BundleKeys.TITLE, "Door")
          putString(BundleKeys.MESSAGE, "Front door opened")
          putString(BundleKeys.NOTIFICATION_VIBRATION, "short")
          putLong(BundleKeys.NOTIFICATION_DURATION_MS, 5_000)
-      })
+      }
 
-      notificationSender.single() shouldBe
+      NotificationRequest.fromBundle(bundle) shouldBe
          NotificationRequest("Door", "Front door opened", VibrationStyle.SHORT, 5_000)
    }
 

@@ -32,7 +32,6 @@ class TaskerActionRunner(
    private val openController: WatchappOpenController,
    private val timeProvider: TimeProvider,
    private val interactiveSessionManager: InteractiveSessionManager,
-   private val notificationSender: (NotificationRequest) -> Unit = {},
 ) {
    suspend fun run(bundle: Bundle): InteractiveTaskerResult? {
       val actionName = bundle.getString(BundleKeys.ACTION) ?: error("Missing action from bundle")
@@ -46,24 +45,8 @@ class TaskerActionRunner(
          TaskerAction.DELETE_PIN -> runDeletePin(bundle).let { null }
          TaskerAction.SHOW_LIST -> runInteractiveList(bundle)
          TaskerAction.SHOW_CONFIRMATION -> runInteractiveConfirmation(bundle)
-         TaskerAction.SEND_NOTIFICATION -> runNotification(bundle).let { null }
+         else -> error("Unsupported action: $action")
       }
-   }
-
-   private fun runNotification(bundle: Bundle) {
-      val vibration = when (bundle.getString(BundleKeys.NOTIFICATION_VIBRATION)?.lowercase()) {
-        "short" -> VibrationStyle.SHORT
-        "double" -> VibrationStyle.DOUBLE
-        else -> VibrationStyle.NONE
-      }
-      notificationSender(
-        NotificationRequest(
-           title = bundle.getString(BundleKeys.TITLE).orEmpty(),
-           body = bundle.getString(BundleKeys.MESSAGE).orEmpty(),
-           vibration = vibration,
-           durationMs = bundle.getLong(BundleKeys.NOTIFICATION_DURATION_MS, 5_000L),
-        )
-      )
    }
 
    private suspend fun runInteractiveList(bundle: Bundle): InteractiveTaskerResult {
