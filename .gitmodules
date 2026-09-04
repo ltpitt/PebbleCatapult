@@ -1,3 +1,6 @@
 [submodule "PebbleCommons"]
 	path = PebbleCommons
-	url = https://github.com/matejdro/PebbleCommons.git
+	# Temporarily pointed at ltpitt's fork/branch until
+	# https://github.com/matejdro/PebbleCommons/pull/2 is merged upstream;
+	# switch back to https://github.com/matejdro/PebbleCommons.git afterwards.
+	url = https://github.com/ltpitt/PebbleCommons.git
