@@ -324,6 +324,13 @@ class WatchappConnectionImplTest {
    }
 
    @Test
+   fun `Ignore stale interactive response`() = scope.runTest {
+      connection.onPacketReceived(InteractiveWatchMessage.ListSelection(41u, "home", "Home").toPacket(256))
+
+      interactiveSessionManager.results.shouldBeEmpty()
+   }
+
+   @Test
    fun `Report explicit failure when interactive connection is unavailable`() = scope.runTest {
       connection.sendInteractiveRequest(InteractiveWatchMessage.Cancel(42u, "done"))
 
