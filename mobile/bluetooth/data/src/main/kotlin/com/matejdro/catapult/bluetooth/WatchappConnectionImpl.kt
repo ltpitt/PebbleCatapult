@@ -191,6 +191,7 @@ class WatchappConnectionImpl(
    private suspend fun processWatchWelcomePacket(data: PebbleDictionary): ReceiveResult {
       val watchProtocolVersion = data.requireUint(1u)
       if (watchProtocolVersion != PROTOCOL_VERSION.toUInt()) {
+         watchBufferSize = 0
          logcat { "Mismatch protocol version $watchProtocolVersion" }
          packetQueue.sendPacket(
             mapOf(

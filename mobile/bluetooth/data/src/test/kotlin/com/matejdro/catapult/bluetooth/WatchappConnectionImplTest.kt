@@ -17,6 +17,7 @@ import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.maps.shouldContainKey
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.types.shouldBeInstanceOf
 import io.rebble.pebblekit2.common.model.PebbleDictionaryItem
 import io.rebble.pebblekit2.common.model.ReceiveResult
 import io.rebble.pebblekit2.common.model.WatchIdentifier
@@ -119,6 +120,8 @@ class WatchappConnectionImplTest {
 
    @Test
    fun `Previous protocol version cannot receive notifications`() = scope.runTest {
+      receiveStandardHelloPacket()
+      runCurrent()
       connection.onPacketReceived(
          mapOf(
             0u to PebbleDictionaryItem.UInt32(0u),
@@ -127,15 +130,23 @@ class WatchappConnectionImplTest {
       )
       runCurrent()
 
-      val exception = assertThrows<IllegalArgumentException> {
+      val exception = try {
          connection.sendNotification(
             mapOf(
                0u to PebbleDictionaryItem.UInt32(WatchNotificationMessage.PACKET_SHOW_NOTIFICATION),
             )
          )
+         null
+      } catch (e: IllegalArgumentException) {
+         e
       }
-      exception.message shouldBe "Watch connection is unavailable"
+      exception.shouldBeInstanceOf<IllegalArgumentException>().message shouldBe "Watch connection is unavailable"
       sender.sentData shouldContainExactly listOf(
+         mapOf(
+            0u to PebbleDictionaryItem.UInt8(1u),
+            1u to PebbleDictionaryItem.UInt16(PROTOCOL_VERSION),
+            2u to PebbleDictionaryItem.Bytes(byteArrayOf(2)),
+         ),
          mapOf(
             0u to PebbleDictionaryItem.UInt8(1u),
             1u to PebbleDictionaryItem.UInt16(PROTOCOL_VERSION),
@@ -436,7 +447,13 @@ class WatchappConnectionImplTest {
       runCurrent()
       advanceTimeBy(5_000)
 
-      assertThrows<TimeoutCancellationException> { send.await() }
+      val exception = try {
+         send.await()
+         null
+      } catch (e: TimeoutCancellationException) {
+         e
+      }
+      exception.shouldBeInstanceOf<TimeoutCancellationException>()
    }
 
    private suspend fun receiveStandardHelloPacket(
