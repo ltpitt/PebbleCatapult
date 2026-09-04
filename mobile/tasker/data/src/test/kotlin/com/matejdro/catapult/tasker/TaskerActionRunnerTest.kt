@@ -64,26 +64,38 @@ class TaskerActionRunnerTest {
    @Test
    fun `Parse notification request bundle`() = scope.runTest {
       val bundle = Bundle().apply {
+         putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
          putString(BundleKeys.TITLE, "Door")
          putString(BundleKeys.MESSAGE, "Front door opened")
          putString(BundleKeys.NOTIFICATION_VIBRATION, "short")
          putLong(BundleKeys.NOTIFICATION_DURATION_MS, 5_000)
       }
 
+      bundle.getString(BundleKeys.ACTION) shouldBe TaskerAction.SEND_NOTIFICATION.name
       NotificationRequest.fromBundle(bundle) shouldBe
          NotificationRequest("Door", "Front door opened", VibrationStyle.SHORT, 5_000)
    }
 
    @Test
-   fun `Use default notification options for unsupported values`() = scope.runTest {
+   fun `Reject unsupported notification vibration values`() = scope.runTest {
       val bundle = Bundle().apply {
          putString(BundleKeys.TITLE, "Door")
          putString(BundleKeys.MESSAGE, "Front door opened")
          putString(BundleKeys.NOTIFICATION_VIBRATION, "unsupported")
       }
 
-      NotificationRequest.fromBundle(bundle) shouldBe
-         NotificationRequest("Door", "Front door opened", VibrationStyle.NONE, 5_000)
+      shouldThrow<TaskerInvalidInputException> {
+         NotificationRequest.fromBundle(bundle)
+      }
+   }
+
+   @Test
+   fun `Allow explicit no vibration`() = scope.runTest {
+      val bundle = Bundle().apply {
+         putString(BundleKeys.NOTIFICATION_VIBRATION, "none")
+      }
+
+      NotificationRequest.fromBundle(bundle).vibration shouldBe VibrationStyle.NONE
    }
 
    @Test

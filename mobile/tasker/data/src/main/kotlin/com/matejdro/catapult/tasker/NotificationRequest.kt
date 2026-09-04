@@ -16,10 +16,12 @@ data class NotificationRequest(
 ) {
    companion object {
       fun fromBundle(bundle: Bundle): NotificationRequest {
-         val vibration = when (bundle.getString(BundleKeys.NOTIFICATION_VIBRATION)?.lowercase()) {
+         val vibrationValue = bundle.getString(BundleKeys.NOTIFICATION_VIBRATION)
+         val vibration = when (vibrationValue?.lowercase()) {
+            null, "none" -> VibrationStyle.NONE
             "short" -> VibrationStyle.SHORT
             "double" -> VibrationStyle.DOUBLE
-            else -> VibrationStyle.NONE
+            else -> throw TaskerInvalidInputException("Unknown vibration style: '$vibrationValue'")
          }
          return NotificationRequest(
             title = bundle.getString(BundleKeys.TITLE).orEmpty(),
