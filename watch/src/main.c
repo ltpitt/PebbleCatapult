@@ -6,7 +6,7 @@
 #include "ui/window_status.h"
 
 
-const uint16_t PROTOCOL_VERSION = 3;
+const uint16_t PROTOCOL_VERSION = 4;
 
 int main(void)
 {

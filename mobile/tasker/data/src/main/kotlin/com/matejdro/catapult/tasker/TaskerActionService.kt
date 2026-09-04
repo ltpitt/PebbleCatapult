@@ -56,14 +56,16 @@ class TaskerActionService : Service() {
 
       coroutineScope.launch {
          try {
-            taskerRunner.run(intent.extras ?: Bundle())
+            val result = taskerRunner.run(intent.extras ?: Bundle())
             logcat { "Run finished" }
 
+            val taskerResult = result?.toTaskerBundle()
             TaskerPlugin.Setting.signalFinish(
                this@TaskerActionService,
                intent,
-               TaskerPluginConstants.RESULT_CODE_OK,
-               Bundle()
+               if (result == null || result.isSuccess()) TaskerPluginConstants.RESULT_CODE_OK
+               else TaskerPluginConstants.RESULT_CODE_FAILED,
+               taskerResult ?: Bundle()
             )
          } catch (e: CancellationException) {
             TaskerPlugin.Setting.signalFinish(
@@ -123,6 +125,36 @@ class TaskerActionService : Service() {
          FOREGROUND_SERVICE_TYPE_SPECIAL_USE
       )
    }
+}
+
+internal fun InteractiveTaskerResult.toTaskerBundle() = Bundle().apply {
+   putString("%catapult_status", when (this@toTaskerBundle) {
+      is InteractiveTaskerResult.Selection -> "success"
+      is InteractiveTaskerResult.Confirmation -> if (accepted) "success" else "failed"
+      is InteractiveTaskerResult.Cancelled -> "cancelled"
+      is InteractiveTaskerResult.TimedOut -> "timeout"
+      is InteractiveTaskerResult.Failed -> "failed"
+   })
+   if (this@toTaskerBundle is InteractiveTaskerResult.Selection) {
+      putString("%catapult_result_id", this@toTaskerBundle.id)
+      putString("%catapult_result_value", this@toTaskerBundle.value)
+   }
+   if (!this@toTaskerBundle.isSuccess()) {
+      putString("%err", "1")
+      putString("%errmsg", this@toTaskerBundle.reason())
+   }
+}
+
+internal fun InteractiveTaskerResult.isSuccess() =
+   this is InteractiveTaskerResult.Selection ||
+      (this is InteractiveTaskerResult.Confirmation && accepted)
+
+internal fun InteractiveTaskerResult.reason() = when (this) {
+   is InteractiveTaskerResult.Cancelled -> reason
+   is InteractiveTaskerResult.TimedOut -> reason
+   is InteractiveTaskerResult.Failed -> reason
+   is InteractiveTaskerResult.Selection -> "Unexpected selection result"
+   is InteractiveTaskerResult.Confirmation -> "Confirmation rejected"
 }
 
 /**

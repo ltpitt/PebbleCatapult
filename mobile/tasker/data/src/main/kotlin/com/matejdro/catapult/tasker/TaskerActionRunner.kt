@@ -32,30 +32,22 @@ class TaskerActionRunner(
    private val timeProvider: TimeProvider,
    private val interactiveSessionManager: InteractiveSessionManager,
 ) {
-   suspend fun run(bundle: Bundle) {
+   suspend fun run(bundle: Bundle): InteractiveTaskerResult? {
       val actionName = bundle.getString(BundleKeys.ACTION) ?: error("Missing action from bundle")
       val action = enumValueOf<TaskerAction>(actionName)
 
-      when (action) {
-         TaskerAction.TOGGLE_ACTIONS -> runToggleAction(bundle)
+      return when (action) {
+         TaskerAction.TOGGLE_ACTIONS -> runToggleAction(bundle).let { null }
 
-         TaskerAction.SYNC_NOW -> runSyncAction(bundle)
-         TaskerAction.CREATE_PIN -> runCreatePin(bundle)
-         TaskerAction.DELETE_PIN -> runDeletePin(bundle)
+         TaskerAction.SYNC_NOW -> runSyncAction(bundle).let { null }
+         TaskerAction.CREATE_PIN -> runCreatePin(bundle).let { null }
+         TaskerAction.DELETE_PIN -> runDeletePin(bundle).let { null }
          TaskerAction.SHOW_LIST -> runInteractiveList(bundle)
          TaskerAction.SHOW_CONFIRMATION -> runInteractiveConfirmation(bundle)
       }
    }
 
-   private fun InteractiveTaskerResult.reason(): String = when (this) {
-      is InteractiveTaskerResult.Cancelled -> reason
-      is InteractiveTaskerResult.TimedOut -> reason
-      is InteractiveTaskerResult.Failed -> reason
-      is InteractiveTaskerResult.Selection -> "Unexpected selection result"
-      is InteractiveTaskerResult.Confirmation -> "Confirmation rejected"
-   }
-
-   private suspend fun runInteractiveList(bundle: Bundle) {
+   private suspend fun runInteractiveList(bundle: Bundle): InteractiveTaskerResult {
       val title = bundle.getString(BundleKeys.TITLE)?.takeIf { it.isNotBlank() }
          ?: throw TaskerInvalidInputException("Title is mandatory")
       val items = bundle.getString(BundleKeys.ITEMS).orEmpty().split('\n').map {
@@ -66,19 +58,15 @@ class TaskerActionRunner(
          InteractiveTaskerRequest.Item(it.substring(0, separator), it.substring(separator + 1))
       }
       val result = interactiveSessionManager.awaitResult(InteractiveTaskerRequest.List(title, items))
-      if (result !is InteractiveTaskerResult.Selection) {
-         throw TaskerInvalidInputException(result.reason())
-      }
+      return result
    }
 
-   private suspend fun runInteractiveConfirmation(bundle: Bundle) {
+   private suspend fun runInteractiveConfirmation(bundle: Bundle): InteractiveTaskerResult {
       val title = bundle.getString(BundleKeys.TITLE)?.takeIf { it.isNotBlank() }
          ?: throw TaskerInvalidInputException("Title is mandatory")
       val message = bundle.getString(BundleKeys.MESSAGE).orEmpty()
       val result = interactiveSessionManager.awaitResult(InteractiveTaskerRequest.Confirmation(title, message))
-      if (result !is InteractiveTaskerResult.Confirmation || !result.accepted) {
-         throw TaskerInvalidInputException(result.reason())
-      }
+      return result
    }
 
    private suspend fun runToggleAction(bundle: Bundle) {

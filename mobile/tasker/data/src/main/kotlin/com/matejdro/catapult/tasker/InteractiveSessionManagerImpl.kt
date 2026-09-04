@@ -1,6 +1,9 @@
 package com.matejdro.catapult.tasker
 
 import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.ContributesBinding
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.binding
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.runBlocking
@@ -12,6 +15,7 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
 @Inject
+@ContributesBinding(AppScope::class, binding<InteractiveSessionManager>())
 class InteractiveSessionManagerImpl(
    private val timeout: Duration = 1.minutes,
 ) : InteractiveSessionManager {

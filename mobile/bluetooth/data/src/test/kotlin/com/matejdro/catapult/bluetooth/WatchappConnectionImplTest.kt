@@ -84,9 +84,7 @@ class WatchappConnectionImplTest {
       override fun cancelActive(reason: String) = Unit
 
       override suspend fun acceptResult(sessionId: UInt, result: InteractiveTaskerResult) {
-         if (sessionId == activeSessionId) {
-            results += sessionId to result
-         }
+         results += sessionId to result
       }
    }
 
@@ -329,10 +327,12 @@ class WatchappConnectionImplTest {
    }
 
    @Test
-   fun `Ignore stale interactive response`() = scope.runTest {
+   fun `Forward stale interactive response to session manager`() = scope.runTest {
       connection.onPacketReceived(InteractiveWatchMessage.ListSelection(41u, "home", "Home").toPacket(256))
 
-      interactiveSessionManager.results.shouldBeEmpty()
+      interactiveSessionManager.results shouldContainExactly listOf(
+         41u to InteractiveTaskerResult.Selection("home", "Home"),
+      )
    }
 
    @Test

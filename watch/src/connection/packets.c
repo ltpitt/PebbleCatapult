@@ -9,8 +9,20 @@ static void receive_phone_welcome(const DictionaryIterator* iterator);
 static void receive_sync_restart(const DictionaryIterator* iterator);
 static void receive_sync_next_packet(const DictionaryIterator* iterator);
 static void receive_watch_packet(const DictionaryIterator* received);
+static void show_interactive(const DictionaryIterator* received);
+static void interactive_select(ClickRecognizerRef recognizer, void* context);
 
 static uint8_t active_buckets_holder[MAX_BUCKETS];
+static Window* interactive_window;
+static MenuLayer* interactive_menu;
+static uint32_t interactive_session;
+static uint32_t interactive_packet;
+static uint16_t interactive_total;
+static uint8_t interactive_count;
+static bool interactive_confirmation;
+static char interactive_title[65];
+static char interactive_ids[32][33];
+static char interactive_values[32][65];
 
 void packets_init()
 {
@@ -65,8 +77,108 @@ static void receive_watch_packet(const DictionaryIterator* received)
     case 3:
         receive_sync_next_packet(received);
         break;
+    case 5:
+    case 6:
+    case 7:
+        show_interactive(received);
+        break;
     default:
         break;
+    }
+
+    static uint16_t interactive_rows(MenuLayer* menu, uint16_t section, void* context)
+    {
+        return interactive_confirmation ? 2 : interactive_count;
+    }
+
+    static void interactive_draw(GContext* ctx, const Layer* cell, MenuIndex* index, void* context)
+    {
+        menu_cell_basic_draw(ctx, cell,
+            interactive_confirmation ? (index->row == 0 ? "Accept" : "Cancel") : interactive_values[index->row],
+            interactive_confirmation ? NULL : interactive_ids[index->row], NULL);
+    }
+
+    static void interactive_click_config(void* context)
+    {
+        menu_layer_set_click_config_onto_window(interactive_menu, interactive_window);
+        window_single_click_subscribe(BUTTON_ID_SELECT, interactive_select);
+    }
+
+    static void interactive_unload(Window* window)
+    {
+        menu_layer_destroy(interactive_menu);
+        interactive_window = NULL;
+        window_destroy(window);
+    }
+
+    static void interactive_send(uint32_t packet, const char* id, const char* value)
+    {
+        DictionaryIterator* iterator;
+        app_message_outbox_begin(&iterator);
+        dict_write_uint32(iterator, 0, packet);
+        dict_write_uint32(iterator, 1, interactive_session);
+        dict_write_uint32(iterator, 3, 0);
+        dict_write_uint16(iterator, 4, 1);
+        dict_write_uint8(iterator, 5, 1);
+        if (id) dict_write_cstring(iterator, 8, id);
+        if (value) dict_write_cstring(iterator, 7, value);
+        if (packet == 9) dict_write_uint8(iterator, 8, value != NULL);
+        bluetooth_app_message_outbox_send();
+    }
+
+    static void interactive_select(ClickRecognizerRef recognizer, void* context)
+    {
+        MenuIndex index = menu_layer_get_selected_index(interactive_menu);
+        if (interactive_confirmation)
+            interactive_send(9, NULL, index.row == 0 ? "accepted" : NULL);
+        else
+            interactive_send(8, interactive_ids[index.row], interactive_values[index.row]);
+        window_stack_pop(true);
+    }
+
+    static void show_interactive(const DictionaryIterator* received)
+    {
+        Tuple* session = dict_find(received, 1);
+        Tuple* title = dict_find(received, 2);
+        if (!session) return;
+        interactive_session = session->value->uint32;
+        interactive_packet = dict_find(received, 0)->value->uint32;
+        if (title) strncpy(interactive_title, title->value->cstring, sizeof(interactive_title) - 1);
+        interactive_title[sizeof(interactive_title) - 1] = '\0';
+        if (interactive_packet == 7) {
+            interactive_send(10, NULL, NULL);
+            return;
+        }
+        interactive_confirmation = interactive_packet == 6;
+        if (interactive_packet == 5) {
+            Tuple* count = dict_find(received, 6);
+            Tuple* id = dict_find(received, 8);
+            Tuple* value = dict_find(received, 7);
+            if (count) interactive_count = count->value->uint8;
+            if (id && value && interactive_count <= 32) {
+                uint32_t sequence = dict_find(received, 3)->value->uint32;
+                strncpy(interactive_ids[sequence], id->value->cstring, 32);
+                strncpy(interactive_values[sequence], value->value->cstring, 64);
+                interactive_ids[sequence][32] = '\0';
+                interactive_values[sequence][64] = '\0';
+            }
+            interactive_total = dict_find(received, 4)->value->uint16;
+            if (interactive_total != interactive_count) return;
+        } else {
+            interactive_count = 0;
+        }
+        if (interactive_window) window_stack_pop(false);
+        interactive_window = window_create();
+        Layer* root = window_get_root_layer(interactive_window);
+        GRect bounds = layer_get_bounds(root);
+        interactive_menu = menu_layer_create(bounds);
+        menu_layer_set_callbacks(interactive_menu, NULL, (MenuLayerCallbacks){
+            .get_num_rows = interactive_rows, .draw_row = interactive_draw
+        });
+        layer_add_child(root, menu_layer_get_layer(interactive_menu));
+        window_set_click_config_provider(interactive_window, interactive_click_config);
+        window_set_window_handlers(interactive_window, (WindowHandlers){ .unload = interactive_unload });
+        window_stack_push(interactive_window, true);
     }
 }
 

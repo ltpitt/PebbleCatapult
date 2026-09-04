@@ -65,7 +65,10 @@ phone ignores stale or unknown session IDs and never completes a session from
 an incomplete response. A CANCEL response without an error is user
 cancellation; an error is a display/protocol failure.
 
-(Note: if phone/watch protocol versions do not match, only dictionary entry `1` is sent).
+Protocol version 4 includes interactive packets 5–10. The watch displays list chunks in
+the native menu (one item per chunk) and presents confirmation as Accept/Cancel; packet
+7 immediately returns packet 10. Older watches negotiate only the version response and
+continue to receive no bucket data until upgraded, avoiding unsafe mixed layouts.
 
 ### Re-start bucketsync sync (packet 2)
 
