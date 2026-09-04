@@ -19,6 +19,11 @@
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
             </intent-filter>
         </activity>
+        <activity android:name=".NotificationActivity" android:exported="true" android:label="Send notification">
+            <intent-filter>
+                <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
+            </intent-filter>
+        </activity>
         <activity android:name=".CreatePinActivity" android:exported="true" android:label="@string/create_timeline_pin">
             <intent-filter>
                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
