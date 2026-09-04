@@ -1,4 +1,5 @@
 #include "window_notification.h"
+#include "notification_lifecycle.h"
 
 #include <string.h>
 
@@ -8,6 +9,7 @@ typedef struct {
     TextLayer* body_layer;
     ScrollLayer* scroll_layer;
     AppTimer* timer;
+    NotificationLifecycle lifecycle;
     char title[65];
     char body[129];
 } Notification;
@@ -38,7 +40,9 @@ static void click_config(void* context)
 static void dismiss_timer(void* context)
 {
     Notification* notification = context;
-    if (active == notification) {
+    if (active == notification &&
+        notification_lifecycle_timer_fired(&notification->lifecycle,
+                                           notification_lifecycle_generation(&notification->lifecycle))) {
         notification->timer = NULL;
         window_notification_dismiss();
     }
@@ -59,6 +63,7 @@ static void unload(Window* window)
 void window_notification_dismiss(void)
 {
     if (active) {
+        notification_lifecycle_dismiss(&active->lifecycle);
         cancel_timer(active);
         window_stack_pop(false);
     }
@@ -77,6 +82,7 @@ void window_notification_show(const char* title, const char* body,
 
     Notification* notification = calloc(1, sizeof(*notification));
     if (!notification) return;
+    notification_lifecycle_init(&notification->lifecycle);
     strncpy(notification->title, title, sizeof(notification->title) - 1);
     strncpy(notification->body, body, sizeof(notification->body) - 1);
 
@@ -123,6 +129,7 @@ void window_notification_show(const char* title, const char* body,
     window_set_click_config_provider_with_context(notification->window, click_config, notification);
     window_set_window_handlers(notification->window, (WindowHandlers){ .unload = unload });
     active = notification;
+    notification_lifecycle_show(&notification->lifecycle, duration_ms);
     window_stack_push(notification->window, true);
 
     if (vibration == 1) {
@@ -132,7 +139,7 @@ void window_notification_show(const char* title, const char* body,
         static const uint32_t double_pattern[] = { 200, 100, 200 };
         vibes_enqueue_custom_pattern((VibePattern){ .durations = double_pattern, .num_segments = 3 });
     }
-    if (duration_ms > 0) {
+    if (notification_lifecycle_timer_active(&notification->lifecycle)) {
         notification->timer = app_timer_register(duration_ms, dismiss_timer, notification);
     }
 }
