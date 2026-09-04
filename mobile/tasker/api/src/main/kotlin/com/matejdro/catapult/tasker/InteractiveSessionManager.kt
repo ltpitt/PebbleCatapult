@@ -16,5 +16,5 @@ interface InteractiveSessionManager {
    fun cancelActive(reason: String)
    suspend fun cancelActive(watchId: String, reason: String) = cancelActive(reason)
 
-   suspend fun acceptResult(sessionId: UInt, result: InteractiveTaskerResult)
+   suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult)
 }

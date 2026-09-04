@@ -85,7 +85,7 @@ class WatchappConnectionImplTest {
 
       override fun cancelActive(reason: String) = Unit
 
-      override suspend fun acceptResult(sessionId: UInt, result: InteractiveTaskerResult) {
+      override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) {
          results += sessionId to result
          if (sessionId == activeSessionId) completedActiveSession = true
       }

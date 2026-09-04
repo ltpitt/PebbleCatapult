@@ -13,7 +13,7 @@ import kotlin.time.Duration.Companion.seconds
 class InteractiveSessionManagerImplTest {
    @Test
    fun `await result sends request through registered bridge`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
       var sent: Pair<UInt, InteractiveTaskerRequest>? = null
       manager.registerSender(InteractiveRequestSender { sessionId, request ->
          sent = sessionId to request
@@ -23,13 +23,29 @@ class InteractiveSessionManagerImplTest {
       runCurrent()
 
       sent shouldBe (1u to request)
-      manager.acceptResult(1u, InteractiveTaskerResult.Confirmation(true))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Confirmation(true))
+      result.await() shouldBe InteractiveTaskerResult.Confirmation(true)
+   }
+
+   @Test
+   fun `response from another watch does not complete active session`() = runTest {
+      val manager = newManager()
+      val result = async {
+         manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
+      }
+      runCurrent()
+
+      manager.acceptResult("other-watch", 1u, InteractiveTaskerResult.Confirmation(true))
+      runCurrent()
+      result.isCompleted shouldBe false
+
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Confirmation(true))
       result.await() shouldBe InteractiveTaskerResult.Confirmation(true)
    }
 
    @Test
    fun `matching list selection completes active session`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
       val request = InteractiveTaskerRequest.List(
          "Locations",
          listOf(InteractiveTaskerRequest.Item("home", "Home")),
@@ -37,14 +53,14 @@ class InteractiveSessionManagerImplTest {
       val result = async { manager.awaitResult(request) }
       runCurrent()
 
-      manager.acceptResult(1u, InteractiveTaskerResult.Selection("home", "Home"))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Selection("home", "Home"))
 
       result.await() shouldBe InteractiveTaskerResult.Selection("home", "Home")
    }
 
    @Test
    fun `unknown list selection id does not complete active session`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
       val request = InteractiveTaskerRequest.List(
          "Locations",
          listOf(InteractiveTaskerRequest.Item("home", "Home")),
@@ -52,17 +68,17 @@ class InteractiveSessionManagerImplTest {
       val result = async { manager.awaitResult(request) }
       runCurrent()
 
-      manager.acceptResult(1u, InteractiveTaskerResult.Selection("work", "Work"))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Selection("work", "Work"))
       runCurrent()
       result.isCompleted shouldBe false
 
-      manager.acceptResult(1u, InteractiveTaskerResult.Selection("home", "Home"))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Selection("home", "Home"))
       result.await() shouldBe InteractiveTaskerResult.Selection("home", "Home")
    }
 
    @Test
    fun `mismatched list selection value does not complete active session`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
       val request = InteractiveTaskerRequest.List(
          "Locations",
          listOf(InteractiveTaskerRequest.Item("home", "Home")),
@@ -70,17 +86,17 @@ class InteractiveSessionManagerImplTest {
       val result = async { manager.awaitResult(request) }
       runCurrent()
 
-      manager.acceptResult(1u, InteractiveTaskerResult.Selection("home", "Office"))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Selection("home", "Office"))
       runCurrent()
       result.isCompleted shouldBe false
 
-      manager.acceptResult(1u, InteractiveTaskerResult.Selection("home", "Home"))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Selection("home", "Home"))
       result.await() shouldBe InteractiveTaskerResult.Selection("home", "Home")
    }
 
    @Test
    fun `confirmation result does not complete active list session`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
       val result = async {
          manager.awaitResult(
             InteractiveTaskerRequest.List(
@@ -91,33 +107,33 @@ class InteractiveSessionManagerImplTest {
       }
       runCurrent()
 
-      manager.acceptResult(1u, InteractiveTaskerResult.Confirmation(true))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Confirmation(true))
       runCurrent()
       result.isCompleted shouldBe false
 
-      manager.acceptResult(1u, InteractiveTaskerResult.Selection("home", "Home"))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Selection("home", "Home"))
       result.await() shouldBe InteractiveTaskerResult.Selection("home", "Home")
    }
 
    @Test
    fun `selection result does not complete active confirmation session`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
       val result = async {
          manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
       }
       runCurrent()
 
-      manager.acceptResult(1u, InteractiveTaskerResult.Selection("home", "Home"))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Selection("home", "Home"))
       runCurrent()
       result.isCompleted shouldBe false
 
-      manager.acceptResult(1u, InteractiveTaskerResult.Confirmation(true))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Confirmation(true))
       result.await() shouldBe InteractiveTaskerResult.Confirmation(true)
    }
 
    @Test
    fun `timeout returns timed out result`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
       val result = async {
          manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
       }
@@ -128,7 +144,7 @@ class InteractiveSessionManagerImplTest {
 
    @Test
    fun `cancellation completes active session`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
       val result = async {
          manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
       }
@@ -141,7 +157,7 @@ class InteractiveSessionManagerImplTest {
 
    @Test
    fun `remote cancellation completes active sessions for either request type`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
       val listResult = async {
          manager.awaitResult(
             InteractiveTaskerRequest.List(
@@ -152,7 +168,7 @@ class InteractiveSessionManagerImplTest {
       }
       runCurrent()
 
-      manager.acceptResult(1u, InteractiveTaskerResult.Cancelled("remote cancelled"))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Cancelled("remote cancelled"))
 
       listResult.await() shouldBe InteractiveTaskerResult.Cancelled("remote cancelled")
 
@@ -161,14 +177,14 @@ class InteractiveSessionManagerImplTest {
       }
       runCurrent()
 
-      manager.acceptResult(2u, InteractiveTaskerResult.Cancelled("remote cancelled"))
+      manager.acceptResult("default", 2u, InteractiveTaskerResult.Cancelled("remote cancelled"))
 
       confirmationResult.await() shouldBe InteractiveTaskerResult.Cancelled("remote cancelled")
    }
 
    @Test
    fun `remote failure completes active sessions for either request type`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
       val listResult = async {
          manager.awaitResult(
             InteractiveTaskerRequest.List(
@@ -179,7 +195,7 @@ class InteractiveSessionManagerImplTest {
       }
       runCurrent()
 
-      manager.acceptResult(1u, InteractiveTaskerResult.Failed("remote failed"))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Failed("remote failed"))
 
       listResult.await() shouldBe InteractiveTaskerResult.Failed("remote failed")
 
@@ -188,14 +204,21 @@ class InteractiveSessionManagerImplTest {
       }
       runCurrent()
 
-      manager.acceptResult(2u, InteractiveTaskerResult.Failed("remote failed"))
+      manager.acceptResult("default", 2u, InteractiveTaskerResult.Failed("remote failed"))
 
       confirmationResult.await() shouldBe InteractiveTaskerResult.Failed("remote failed")
    }
 
    @Test
    fun `caller cancellation clears active session for a later request`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
+      var cancelSent: Pair<UInt, String>? = null
+      manager.registerSender("default", object : InteractiveRequestSender {
+         override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) = Unit
+         override suspend fun cancel(sessionId: UInt, reason: String) {
+            cancelSent = sessionId to reason
+         }
+      })
       val cancelled = async {
          manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
       }
@@ -203,49 +226,50 @@ class InteractiveSessionManagerImplTest {
 
       cancelled.cancel(CancellationException("caller cancelled"))
       cancelled.join()
+      cancelSent shouldBe (1u to "Interactive session cancelled")
 
       val next = async {
          manager.awaitResult(InteractiveTaskerRequest.Confirmation("Next", "Proceed?"))
       }
       runCurrent()
-      manager.acceptResult(2u, InteractiveTaskerResult.Confirmation(true))
+      manager.acceptResult("default", 2u, InteractiveTaskerResult.Confirmation(true))
 
       next.await() shouldBe InteractiveTaskerResult.Confirmation(true)
    }
 
    @Test
    fun `stale response does not complete active session`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
       val result = async {
          manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
       }
       runCurrent()
 
-      manager.acceptResult(2u, InteractiveTaskerResult.Confirmation(true))
+      manager.acceptResult("default", 2u, InteractiveTaskerResult.Confirmation(true))
       runCurrent()
       result.isCompleted shouldBe false
 
-      manager.acceptResult(1u, InteractiveTaskerResult.Confirmation(true))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Confirmation(true))
       result.await() shouldBe InteractiveTaskerResult.Confirmation(true)
    }
 
    @Test
    fun `duplicate response is ignored`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
       val result = async {
          manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
       }
       runCurrent()
 
-      manager.acceptResult(1u, InteractiveTaskerResult.Confirmation(true))
-      manager.acceptResult(1u, InteractiveTaskerResult.Confirmation(false))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Confirmation(true))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Confirmation(false))
 
       result.await() shouldBe InteractiveTaskerResult.Confirmation(true)
    }
 
    @Test
    fun `second active request fails`() = runTest {
-      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val manager = newManager()
       val first = async {
          manager.awaitResult(InteractiveTaskerRequest.Confirmation("First", "Proceed?"))
       }
@@ -256,5 +280,9 @@ class InteractiveSessionManagerImplTest {
 
       manager.cancelActive("done")
       first.await()
+   }
+
+   private fun newManager() = InteractiveSessionManagerImpl(timeout = 1.seconds).also {
+      it.registerSender(InteractiveRequestSender { _, _ -> })
    }
 }

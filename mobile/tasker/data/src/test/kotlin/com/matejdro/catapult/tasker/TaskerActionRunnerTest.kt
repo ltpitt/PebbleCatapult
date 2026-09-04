@@ -58,7 +58,7 @@ class TaskerActionRunnerTest {
          }
       }
       override fun cancelActive(reason: String) = Unit
-      override suspend fun acceptResult(sessionId: UInt, result: InteractiveTaskerResult) = Unit
+      override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) = Unit
    }
 
    @Test

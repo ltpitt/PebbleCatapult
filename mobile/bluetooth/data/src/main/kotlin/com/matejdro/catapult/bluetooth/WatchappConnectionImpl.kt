@@ -162,12 +162,12 @@ class WatchappConnectionImpl(
          }
       }
 
-      interactiveSessionManager.acceptResult(message.sessionId, result)
+      interactiveSessionManager.acceptResult(watch.toString(), message.sessionId, result)
       return ReceiveResult.Ack
    }
 
    private suspend fun failInteractive(sessionId: UInt, reason: String) {
-      interactiveSessionManager.acceptResult(sessionId, InteractiveTaskerResult.Failed(reason))
+      interactiveSessionManager.acceptResult(watch.toString(), sessionId, InteractiveTaskerResult.Failed(reason))
    }
 
    private suspend fun processWatchWelcomePacket(data: PebbleDictionary): ReceiveResult {

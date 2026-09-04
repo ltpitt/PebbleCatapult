@@ -50,10 +50,7 @@ class InteractiveSessionManagerImpl(
       val session = mutex.withLock {
          if (activeSession != null) return InteractiveTaskerResult.Failed("Another interactive session is active")
          val entry = synchronized(senders) { senders.entries.firstOrNull() }
-            ?: object : Map.Entry<String, InteractiveRequestSender> {
-               override val key = "default"
-               override val value = InteractiveRequestSender { _, _ -> }
-            }
+            ?: return InteractiveTaskerResult.Failed("Watch connection is unavailable")
          ActiveSession(nextSessionId++, entry.key, entry.value, request, CompletableDeferred()).also { activeSession = it }
       }
       try {
@@ -68,6 +65,11 @@ class InteractiveSessionManagerImpl(
             ?: InteractiveTaskerResult.TimedOut("Interactive session timed out").also {
                runCatching { session.sender.cancel(session.id, "Interactive session timed out") }
             }
+      } catch (e: CancellationException) {
+         withContext(NonCancellable) {
+            runCatching { session.sender.cancel(session.id, "Interactive session cancelled") }
+         }
+         throw e
       } finally {
          withContext(NonCancellable) {
             mutex.withLock { if (activeSession?.id == session.id) activeSession = null }
@@ -89,9 +91,9 @@ class InteractiveSessionManagerImpl(
       if (session != null) runCatching { session.sender.cancel(session.id, reason) }
    }
 
-   override suspend fun acceptResult(sessionId: UInt, result: InteractiveTaskerResult) {
+   override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) {
       mutex.withLock {
-         activeSession?.takeIf { it.id == sessionId }?.takeIf { it.accepts(result) }?.let {
+         activeSession?.takeIf { it.watch == watchId }?.takeIf { it.id == sessionId }?.takeIf { it.accepts(result) }?.let {
             it.result.complete(result)
             activeSession = null
          }

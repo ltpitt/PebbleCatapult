@@ -185,6 +185,15 @@ static void show_interactive(const DictionaryIterator* received)
             interactive_send_error(error_session, "Missing interactive metadata");
             return;
         }
+        Tuple* sequence = dict_find(received, 3);
+        Tuple* total = dict_find(received, 4);
+        Tuple* terminal = dict_find(received, 5);
+        if (!sequence || sequence->type != TUPLE_UINT ||
+            !total || total->type != TUPLE_UINT ||
+            !terminal || terminal->type != TUPLE_UINT) {
+            interactive_send_error(error_session, "Invalid interactive metadata");
+            return;
+        }
         const uint32_t incoming_session = session->value->uint32;
         if (incoming_session != interactive_session) {
             for (uint8_t i = 0; i < 32; i++) interactive_received[i] = false;
@@ -202,6 +211,14 @@ static void show_interactive(const DictionaryIterator* received)
             }
         }
         if (interactive_packet == 7) {
+            Tuple* reason = dict_find(received, 9);
+            if (sequence->value->uint32 != 0 || total->value->uint16 != 1 ||
+                terminal->value->uint8 != 1 ||
+                !reason || reason->type != TUPLE_CSTRING ||
+                interactive_bounded_strlen(reason->value->cstring, 65) >= 65) {
+                interactive_send_error(incoming_session, "Invalid cancellation reason");
+                return;
+            }
             interactive_send(10, NULL, NULL);
             return;
         }
@@ -221,14 +238,10 @@ static void show_interactive(const DictionaryIterator* received)
             Tuple* count = dict_find(received, 6);
             Tuple* id = dict_find(received, 8);
             Tuple* value = dict_find(received, 7);
-            Tuple* sequence_tuple = dict_find(received, 3);
-            Tuple* total_tuple = dict_find(received, 4);
-            Tuple* terminal_tuple = dict_find(received, 5);
-            if (!count || count->type != TUPLE_UINT || count->value->uint8 > 32 ||
-                !sequence_tuple || sequence_tuple->type != TUPLE_UINT ||
-                !total_tuple || total_tuple->type != TUPLE_UINT ||
-                !terminal_tuple || terminal_tuple->type != TUPLE_UINT ||
-                terminal_tuple->value->uint8 > 1) {
+            Tuple* sequence_tuple = sequence;
+            Tuple* total_tuple = total;
+            Tuple* terminal_tuple = terminal;
+            if (!count || count->type != TUPLE_UINT || count->value->uint8 > 32) {
                 interactive_send_error(incoming_session, "Invalid list metadata");
                 return;
             }
