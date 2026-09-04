@@ -39,6 +39,22 @@ class InteractiveWatchMessageTest {
    }
 
    @Test
+   fun `decoding rejects oversized list titles`() {
+      val packet = InteractiveWatchMessage.ShowList(1u, "ok", listOf(InteractiveWatchMessage.Item("id", "value")))
+         .packets(256).single().toMutableMap()
+      packet[2u] = PebbleDictionaryItem.Text("é".repeat(33))
+
+      shouldThrow<IllegalArgumentException> { InteractiveWatchMessage.decode(packet) }
+   }
+
+   @Test
+   fun `packet size includes complete dictionary encoding`() {
+      shouldThrow<IllegalArgumentException> {
+         InteractiveWatchMessage.ShowConfirmation(1u, "a", "b").toPacket(69)
+      }
+   }
+
+   @Test
    fun `incomplete and duplicate chunks are deterministic`() {
       val request = InteractiveWatchMessage.ShowList(7u, "x", listOf(
          InteractiveWatchMessage.Item("a", "A"),

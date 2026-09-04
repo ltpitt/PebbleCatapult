@@ -201,8 +201,10 @@ sealed interface InteractiveWatchMessage {
                require(itemCount.toInt() > 0 || (sequence == 0u && total == 1.toUShort() && id == null)) {
                   "Invalid empty list chunk"
                }
+               val listTitle = text(2u)!!
+               require(listTitle.utf8Length() <= MAX_TITLE_BYTES) { "List title is too long" }
                ListChunk(
-                  session, text(2u)!!, sequence, total, itemCount,
+                  session, listTitle, sequence, total, itemCount,
                   id?.let { Item(it, value!!) }, terminal,
                )
             }
@@ -304,12 +306,15 @@ private fun InteractiveWatchMessage.packet(
       4u to PebbleDictionaryItem.UInt16(total.toUShort()),
       5u to PebbleDictionaryItem.UInt8(if (sequence == total - 1) 1u else 0u),
    ).apply(fields)
-   val estimated = result.values.sumOf {
-      when (it) {
-         is PebbleDictionaryItem.Text -> it.value.utf8Length() + 2
-         else -> 5
-      }
-   }
+   val estimated = 1 + result.values.sumOf { 7 + it.encodedPayloadSize() }
    require(estimated < limit) { "Interactive packet exceeds watch buffer ($estimated >= $limit)" }
    return result
+}
+
+private fun PebbleDictionaryItem.encodedPayloadSize(): Int = when (this) {
+   is PebbleDictionaryItem.Text -> value.utf8Length() + 1
+   is PebbleDictionaryItem.Bytes -> value.size
+   is PebbleDictionaryItem.UInt8, is PebbleDictionaryItem.Int8 -> 1
+   is PebbleDictionaryItem.UInt16, is PebbleDictionaryItem.Int16 -> 2
+   is PebbleDictionaryItem.UInt32, is PebbleDictionaryItem.Int32 -> 4
 }
