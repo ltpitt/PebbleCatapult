@@ -62,7 +62,7 @@ class TaskerActionRunnerTest {
    }
 
    @Test
-   fun `Parse notification request bundle`() = scope.runTest {
+   fun `Runner recognizes send notification action before deferred dispatch`() = scope.runTest {
       val bundle = Bundle().apply {
          putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
          putString(BundleKeys.TITLE, "Door")
@@ -71,9 +71,21 @@ class TaskerActionRunnerTest {
          putLong(BundleKeys.NOTIFICATION_DURATION_MS, 5_000)
       }
 
-      bundle.getString(BundleKeys.ACTION) shouldBe TaskerAction.SEND_NOTIFICATION.name
+      shouldThrow<IllegalStateException> {
+         runner.run(bundle)
+      }.shouldHaveMessage("Unsupported action: SEND_NOTIFICATION")
+
       NotificationRequest.fromBundle(bundle) shouldBe
          NotificationRequest("Door", "Front door opened", VibrationStyle.SHORT, 5_000)
+   }
+
+   @Test
+   fun `Notification duration defaults to 5000 ms and preserves explicit zero`() = scope.runTest {
+      NotificationRequest.fromBundle(Bundle()).durationMs shouldBe 5_000
+
+      NotificationRequest.fromBundle(Bundle().apply {
+         putLong(BundleKeys.NOTIFICATION_DURATION_MS, 0)
+      }).durationMs shouldBe 0
    }
 
    @Test
