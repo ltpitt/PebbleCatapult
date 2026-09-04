@@ -152,5 +152,8 @@ void window_notification_show(const char* title, const char* body,
     }
     if (notification_lifecycle_timer_active(&notification->lifecycle)) {
         notification->timer = app_timer_register(duration_ms, dismiss_timer, notification);
+        if (!notification->timer) {
+            notification_lifecycle_timer_registration_failed(&notification->lifecycle);
+        }
     }
 }

@@ -67,6 +67,20 @@ static void test_zero_duration_persists(void)
     assert(lifecycle.visible);
 }
 
+static void test_timer_registration_failure_persists_for_manual_dismissal(void)
+{
+    NotificationLifecycle lifecycle;
+    TimerRecorder recorder = {0};
+    init_lifecycle(&lifecycle, &recorder);
+    notification_lifecycle_show(&lifecycle, 5000);
+    notification_lifecycle_timer_registration_failed(&lifecycle);
+    assert(lifecycle.visible);
+    assert(!notification_lifecycle_timer_active(&lifecycle));
+    assert(!notification_lifecycle_timer_fired(
+        &lifecycle, notification_lifecycle_generation(&lifecycle)));
+    assert(lifecycle.visible);
+}
+
 static void test_replacement_ignores_old_timer(void)
 {
     NotificationLifecycle lifecycle;
@@ -104,6 +118,7 @@ int main(void)
     test_select_dismissal();
     test_automatic_dismissal();
     test_zero_duration_persists();
+    test_timer_registration_failure_persists_for_manual_dismissal();
     test_replacement_ignores_old_timer();
     test_unload_cancels_timer();
     return 0;

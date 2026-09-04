@@ -25,5 +25,6 @@ bool notification_lifecycle_back(NotificationLifecycle* lifecycle);
 bool notification_lifecycle_select(NotificationLifecycle* lifecycle);
 void notification_lifecycle_unload(NotificationLifecycle* lifecycle);
 bool notification_lifecycle_timer_fired(NotificationLifecycle* lifecycle, uint32_t generation);
+void notification_lifecycle_timer_registration_failed(NotificationLifecycle* lifecycle);
 bool notification_lifecycle_timer_active(const NotificationLifecycle* lifecycle);
 uint32_t notification_lifecycle_generation(const NotificationLifecycle* lifecycle);

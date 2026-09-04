@@ -73,6 +73,11 @@ bool notification_lifecycle_timer_fired(NotificationLifecycle* lifecycle, uint32
     return true;
 }
 
+void notification_lifecycle_timer_registration_failed(NotificationLifecycle* lifecycle)
+{
+    lifecycle->timer_active = false;
+}
+
 bool notification_lifecycle_timer_active(const NotificationLifecycle* lifecycle)
 {
     return lifecycle->timer_active;
