@@ -6,12 +6,14 @@
 #include "../ui/window_status.h"
 #include "../ui/window_interactive_list.h"
 #include "../ui/window_interactive_confirm.h"
+#include "../ui/window_notification.h"
 
 static void receive_phone_welcome(const DictionaryIterator* iterator);
 static void receive_sync_restart(const DictionaryIterator* iterator);
 static void receive_sync_next_packet(const DictionaryIterator* iterator);
 static void receive_watch_packet(const DictionaryIterator* received);
 static void show_interactive(const DictionaryIterator* received);
+static void show_notification(const DictionaryIterator* received);
 static void interactive_send(uint32_t packet, uint32_t session, const char* id, const char* value);
 static void interactive_send_error(uint32_t session, const char* reason);
 
@@ -26,6 +28,34 @@ static char interactive_ids[32][33];
 static char interactive_values[32][65];
 static bool interactive_received[32];
 static bool interactive_completed;
+
+static bool valid_utf8_cstring(const Tuple* tuple, size_t max_bytes)
+{
+    if (!tuple || tuple->type != TUPLE_CSTRING || tuple->length == 0 ||
+        tuple->length > max_bytes + 1) return false;
+    const unsigned char* text = (const unsigned char*)tuple->value->cstring;
+    size_t length = tuple->length - 1;
+    if (text[length] != '\0') return false;
+    size_t i = 0;
+    while (i < length) {
+        uint32_t codepoint;
+        uint8_t width;
+        if (text[i] <= 0x7f) { codepoint = text[i++]; continue; }
+        if (text[i] >= 0xc2 && text[i] <= 0xdf) { codepoint = text[i++] & 0x1f; width = 2; }
+        else if (text[i] >= 0xe0 && text[i] <= 0xef) { codepoint = text[i++] & 0x0f; width = 3; }
+        else if (text[i] >= 0xf0 && text[i] <= 0xf4) { codepoint = text[i++] & 0x07; width = 4; }
+        else return false;
+        if (i + width - 1 > length) return false;
+        for (uint8_t j = 1; j < width; j++) {
+            if ((text[i] & 0xc0) != 0x80) return false;
+            codepoint = (codepoint << 6) | (text[i++] & 0x3f);
+        }
+        if ((width == 3 && codepoint < 0x800) ||
+            (width == 4 && codepoint < 0x10000) ||
+            codepoint > 0x10ffff || (codepoint >= 0xd800 && codepoint <= 0xdfff)) return false;
+    }
+    return true;
+}
 
 static size_t interactive_bounded_strlen(const char* value, size_t limit)
 {
@@ -116,9 +146,35 @@ static void receive_watch_packet(const DictionaryIterator* received)
     case 7:
         show_interactive(received);
         break;
+    case 11:
+        show_notification(received);
+        break;
     default:
         break;
     }
+}
+
+static void show_notification(const DictionaryIterator* received)
+{
+    Tuple* packet = dict_find(received, 0);
+    Tuple* title = dict_find(received, 2);
+    Tuple* body = dict_find(received, 7);
+    Tuple* vibration = dict_find(received, 6);
+    Tuple* duration = dict_find(received, 8);
+    if (!interactive_uint_tuple_width(packet, 4) || packet->value->uint32 != 11 ||
+        !valid_utf8_cstring(title, 64) ||
+        !valid_utf8_cstring(body, 128) ||
+        !interactive_uint_tuple_width(vibration, 1) ||
+        !interactive_uint_tuple_width(duration, 4) ||
+        vibration->value->uint8 > 2 ||
+        duration->value->uint32 > 300000) {
+        APP_LOG(APP_LOG_LEVEL_ERROR, "Invalid notification packet");
+        return;
+    }
+    interactive_clear_window();
+    window_notification_dismiss_all();
+    window_notification_show(title->value->cstring, body->value->cstring,
+                             vibration->value->uint8, duration->value->uint32);
 }
 
 static void interactive_send(uint32_t packet, uint32_t session, const char* id, const char* value)
