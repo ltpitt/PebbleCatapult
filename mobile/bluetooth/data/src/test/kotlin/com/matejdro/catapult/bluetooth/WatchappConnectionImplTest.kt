@@ -21,9 +21,13 @@ import io.rebble.pebblekit2.common.model.PebbleDictionaryItem
 import io.rebble.pebblekit2.common.model.ReceiveResult
 import io.rebble.pebblekit2.common.model.WatchIdentifier
 import kotlinx.coroutines.async
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import io.rebble.pebblekit2.common.model.TransmissionResult
 import si.inova.kotlinova.core.test.TestScopeWithDispatcherProvider
 import si.inova.kotlinova.core.test.time.virtualTimeProvider
 
@@ -346,6 +350,23 @@ class WatchappConnectionImplTest {
       interactiveSessionManager.results shouldContainExactly listOf(
          42u to InteractiveTaskerResult.Failed("Watch connection is unavailable"),
       )
+   }
+
+   @Test
+   fun `Timeout notification retries when watch is disconnected`() = scope.runTest {
+      receiveStandardHelloPacket()
+      runCurrent()
+      sender.sendingResult = TransmissionResult.FailedWatchNotConnected
+
+      val send = async {
+         connection.sendNotification(
+            WatchNotificationMessage.Show("Title", "Body", WatchNotificationMessage.Vibration.NONE, 0)
+         )
+      }
+      runCurrent()
+      advanceTimeBy(5_000)
+
+      assertThrows<TimeoutCancellationException> { send.await() }
    }
 
    private suspend fun receiveStandardHelloPacket(

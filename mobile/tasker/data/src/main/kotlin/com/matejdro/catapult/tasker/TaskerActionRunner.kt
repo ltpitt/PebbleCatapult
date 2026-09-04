@@ -83,8 +83,8 @@ class TaskerActionRunner(
          )
       } catch (e: TaskerInvalidInputException) {
          throw e
-      } catch (e: Exception) {
-         throw TaskerInvalidInputException(e.message ?: "Failed to send notification")
+      } catch (e: IllegalArgumentException) {
+         throw TaskerInvalidInputException(e.message ?: "Invalid notification")
       }
    }
 

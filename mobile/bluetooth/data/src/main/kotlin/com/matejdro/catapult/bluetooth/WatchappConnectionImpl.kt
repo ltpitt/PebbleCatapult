@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withTimeout
 import logcat.logcat
 
 @Inject
@@ -80,8 +81,10 @@ class WatchappConnectionImpl(
       sendNotification(WatchNotificationMessage.Show(title, body, style, durationMs))
    }
 
-   suspend fun sendNotification(notification: WatchNotificationMessage.Show) {
-      sendNotification(notification.toPacket(watchBufferSize))
+   override suspend fun sendNotification(notification: WatchNotificationMessage.Show) {
+      withTimeout(NOTIFICATION_SEND_TIMEOUT) {
+         sendNotification(notification.toPacket(watchBufferSize))
+      }
    }
 
    override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) {
@@ -272,5 +275,6 @@ private fun <K, V> mapOfNotNull(vararg pairs: Pair<K, V>?): Map<K, V> =
    pairs.filterNotNull().toMap()
 
 private const val INTERACTIVE_SEND_TIMEOUT = 5_000L
+private const val NOTIFICATION_SEND_TIMEOUT = 5_000L
 
 private class InteractiveSendTimeoutException : Exception()
