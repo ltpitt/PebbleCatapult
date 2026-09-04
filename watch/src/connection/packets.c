@@ -21,11 +21,19 @@ static uint16_t interactive_total;
 static uint8_t interactive_count;
 static bool interactive_confirmation;
 static char interactive_title[65];
+static char interactive_message[129];
 static char interactive_ids[32][33];
 static char interactive_values[32][65];
 static bool interactive_received[32];
 static TextLayer* interactive_title_layer;
 static TextLayer* interactive_message_layer;
+
+static size_t interactive_bounded_strlen(const char* value, size_t limit)
+{
+    size_t length = 0;
+    while (length < limit && value[length] != '\0') length++;
+    return length;
+}
 
 static uint16_t interactive_rows(MenuLayer* menu, uint16_t section, void* context)
 {
@@ -58,9 +66,12 @@ static void interactive_unload(Window* window)
     interactive_count = 0;
     interactive_total = 0;
     interactive_confirmation = false;
+    interactive_title[0] = '\0';
+    interactive_message[0] = '\0';
     window_destroy(window);
 }
 static void interactive_send(uint32_t packet, const char* id, const char* value);
+static void interactive_send_error(uint32_t session, const char* reason);
 
 void packets_init()
 {
@@ -140,6 +151,14 @@ static void interactive_send(uint32_t packet, const char* id, const char* value)
         bluetooth_app_message_outbox_send();
     }
 
+static void interactive_send_error(uint32_t session, const char* reason)
+{
+    const uint32_t previous_session = interactive_session;
+    interactive_session = session;
+    interactive_send(10, NULL, reason);
+    interactive_session = previous_session;
+}
+
 static void interactive_select(ClickRecognizerRef recognizer, void* context)
     {
         MenuIndex index = menu_layer_get_selected_index(interactive_menu);
@@ -154,15 +173,23 @@ static void interactive_select(ClickRecognizerRef recognizer, void* context)
 
 static void show_interactive(const DictionaryIterator* received)
     {
+        Tuple* packet = dict_find(received, 0);
         Tuple* session = dict_find(received, 1);
         Tuple* title = dict_find(received, 2);
-        if (!session) return;
+        const uint32_t error_session =
+            session && session->type == TUPLE_UINT ? session->value->uint32 : interactive_session;
+        if (!packet || packet->type != TUPLE_UINT || !session || session->type != TUPLE_UINT) {
+            interactive_send_error(error_session, "Missing interactive metadata");
+            return;
+        }
         const uint32_t incoming_session = session->value->uint32;
         if (incoming_session != interactive_session) {
             for (uint8_t i = 0; i < 32; i++) interactive_received[i] = false;
+            interactive_count = 0;
+            interactive_total = 0;
         }
         interactive_session = incoming_session;
-        interactive_packet = dict_find(received, 0)->value->uint32;
+        interactive_packet = packet->value->uint32;
         if (interactive_packet == 5) {
             Tuple* sequence = dict_find(received, 3);
             bool any_received = false;
@@ -171,41 +198,99 @@ static void show_interactive(const DictionaryIterator* received)
                 for (uint8_t i = 0; i < 32; i++) interactive_received[i] = false;
             }
         }
-        if (title) strncpy(interactive_title, title->value->cstring, sizeof(interactive_title) - 1);
-        interactive_title[sizeof(interactive_title) - 1] = '\0';
         if (interactive_packet == 7) {
             interactive_send(10, NULL, NULL);
             return;
         }
+        if (interactive_packet != 5 && interactive_packet != 6) {
+            interactive_send_error(incoming_session, "Invalid interactive request");
+            return;
+        }
+        if (!title || title->type != TUPLE_CSTRING ||
+            interactive_bounded_strlen(title->value->cstring, sizeof(interactive_title)) >= sizeof(interactive_title)) {
+            interactive_send_error(incoming_session, "Invalid interactive title");
+            return;
+        }
+        strncpy(interactive_title, title->value->cstring, sizeof(interactive_title) - 1);
+        interactive_title[sizeof(interactive_title) - 1] = '\0';
         interactive_confirmation = interactive_packet == 6;
         if (interactive_packet == 5) {
             Tuple* count = dict_find(received, 6);
             Tuple* id = dict_find(received, 8);
             Tuple* value = dict_find(received, 7);
-            if (count) {
-                if (count->value->uint8 > 32) {
-                    interactive_send(10, NULL, NULL);
-                    return;
-                }
-                interactive_count = count->value->uint8;
-            }
             Tuple* sequence_tuple = dict_find(received, 3);
             Tuple* total_tuple = dict_find(received, 4);
-            if (id && value && sequence_tuple && total_tuple && interactive_count <= 32) {
-                uint32_t sequence = sequence_tuple->value->uint32;
-                uint16_t total = total_tuple->value->uint16;
-                if (sequence >= 32 || sequence >= total || total != interactive_count) return;
-                strncpy(interactive_ids[sequence], id->value->cstring, 32);
-                strncpy(interactive_values[sequence], value->value->cstring, 64);
-                interactive_ids[sequence][32] = '\0';
-                interactive_values[sequence][64] = '\0';
+            Tuple* terminal_tuple = dict_find(received, 5);
+            if (!count || count->type != TUPLE_UINT || count->value->uint8 > 32 ||
+                !sequence_tuple || sequence_tuple->type != TUPLE_UINT ||
+                !total_tuple || total_tuple->type != TUPLE_UINT ||
+                !terminal_tuple || terminal_tuple->type != TUPLE_UINT ||
+                terminal_tuple->value->uint8 > 1) {
+                interactive_send_error(incoming_session, "Invalid list metadata");
+                return;
+            }
+            if (interactive_total != 0 &&
+                (count->value->uint8 != interactive_count ||
+                 total_tuple->value->uint16 != interactive_total)) {
+                interactive_send_error(incoming_session, "Inconsistent list chunks");
+                return;
+            }
+            interactive_count = count->value->uint8;
+            interactive_total = total_tuple->value->uint16;
+            uint32_t sequence = sequence_tuple->value->uint32;
+            if ((interactive_count == 0 && (sequence != 0 || interactive_total != 1)) ||
+                (interactive_count > 0 && (interactive_total != interactive_count || sequence >= interactive_total)) ||
+                (terminal_tuple->value->uint8 != (sequence + 1 == interactive_total))) {
+                interactive_send_error(incoming_session, "Inconsistent list chunks");
+                return;
+            }
+            if (interactive_count > 0 &&
+                (!id || id->type != TUPLE_CSTRING || !value || value->type != TUPLE_CSTRING ||
+                 id->value->cstring[0] == '\0' ||
+                 interactive_bounded_strlen(id->value->cstring, sizeof(interactive_ids[0])) >= sizeof(interactive_ids[0]) ||
+                 interactive_bounded_strlen(value->value->cstring, sizeof(interactive_values[0])) >= sizeof(interactive_values[0]))) {
+                interactive_send_error(incoming_session, "Invalid list item");
+                return;
+            }
+            if (interactive_count > 0) {
+                if (interactive_received[sequence] &&
+                    (strcmp(interactive_ids[sequence], id->value->cstring) != 0 ||
+                     strcmp(interactive_values[sequence], value->value->cstring) != 0)) {
+                    interactive_send_error(incoming_session, "Conflicting list chunk");
+                    return;
+                }
+                strncpy(interactive_ids[sequence], id->value->cstring, sizeof(interactive_ids[sequence]) - 1);
+                strncpy(interactive_values[sequence], value->value->cstring, sizeof(interactive_values[sequence]) - 1);
+                interactive_ids[sequence][sizeof(interactive_ids[sequence]) - 1] = '\0';
+                interactive_values[sequence][sizeof(interactive_values[sequence]) - 1] = '\0';
                 interactive_received[sequence] = true;
             }
-            interactive_total = total_tuple ? total_tuple->value->uint16 : 0;
-            if (interactive_total != interactive_count) return;
+            if (interactive_count == 0) {
+                /* The single empty-list chunk is complete without an item. */
+                interactive_total = 1;
+            }
             for (uint8_t i = 0; i < interactive_count; i++)
-                if (!interactive_received[i]) return;
+                if (!interactive_received[i]) {
+                    return;
+                }
         } else {
+            Tuple* message = dict_find(received, 7);
+            if (!message || message->type != TUPLE_CSTRING ||
+                interactive_bounded_strlen(message->value->cstring, sizeof(interactive_message)) >= sizeof(interactive_message)) {
+                interactive_send_error(incoming_session, "Invalid confirmation message");
+                return;
+            }
+            strncpy(interactive_message, message->value->cstring, sizeof(interactive_message) - 1);
+            interactive_message[sizeof(interactive_message) - 1] = '\0';
+            Tuple* sequence = dict_find(received, 3);
+            Tuple* total = dict_find(received, 4);
+            Tuple* terminal = dict_find(received, 5);
+            if (!sequence || sequence->type != TUPLE_UINT || sequence->value->uint32 != 0 ||
+                !total || total->type != TUPLE_UINT || total->value->uint16 != 1 ||
+                !terminal || terminal->type != TUPLE_UINT || terminal->value->uint8 != 1) {
+                interactive_send_error(incoming_session, "Invalid confirmation metadata");
+                return;
+            }
             interactive_count = 0;
         }
         if (interactive_window) window_stack_pop(false);
@@ -218,9 +303,8 @@ static void show_interactive(const DictionaryIterator* received)
         text_layer_set_font(interactive_title_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD));
         layer_add_child(root, text_layer_get_layer(interactive_title_layer));
         if (interactive_confirmation) {
-            Tuple* message = dict_find(received, 7);
             interactive_message_layer = text_layer_create(GRect(4, 27, bounds.size.w - 8, 36));
-            text_layer_set_text(interactive_message_layer, message ? message->value->cstring : "");
+            text_layer_set_text(interactive_message_layer, interactive_message);
             text_layer_set_font(interactive_message_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
             layer_add_child(root, text_layer_get_layer(interactive_message_layer));
         }
