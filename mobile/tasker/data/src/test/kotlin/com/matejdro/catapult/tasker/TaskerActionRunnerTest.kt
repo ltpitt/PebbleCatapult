@@ -47,6 +47,7 @@ class TaskerActionRunnerTest {
 
    private class RecordingInteractiveSessionManager : InteractiveSessionManager {
       val requests = mutableListOf<InteractiveTaskerRequest>()
+      val notifications = mutableListOf<NotificationRequest>()
       override fun registerSender(sender: InteractiveRequestSender) = Unit
       override suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult {
          requests += request
@@ -58,6 +59,9 @@ class TaskerActionRunnerTest {
          }
       }
       override fun cancelActive(reason: String) = Unit
+      override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+         notifications += NotificationRequest(title, body, VibrationStyle.entries[vibration], durationMs)
+      }
       override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) = Unit
    }
 
@@ -71,12 +75,9 @@ class TaskerActionRunnerTest {
          putLong(BundleKeys.NOTIFICATION_DURATION_MS, 5_000)
       }
 
-      shouldThrow<IllegalStateException> {
-         runner.run(bundle)
-      }.shouldHaveMessage(
-         "SEND_NOTIFICATION is temporarily unsupported until notification transport is implemented",
-      )
-
+      runner.run(bundle)
+      interactiveManager.notifications.single() shouldBe
+         NotificationRequest("Door", "Front door opened", VibrationStyle.SHORT, 5_000)
       NotificationRequest.fromBundle(bundle) shouldBe
          NotificationRequest("Door", "Front door opened", VibrationStyle.SHORT, 5_000)
    }

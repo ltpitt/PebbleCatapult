@@ -45,9 +45,7 @@ class TaskerActionRunner(
          TaskerAction.DELETE_PIN -> runDeletePin(bundle).let { null }
          TaskerAction.SHOW_LIST -> runInteractiveList(bundle)
          TaskerAction.SHOW_CONFIRMATION -> runInteractiveConfirmation(bundle)
-         TaskerAction.SEND_NOTIFICATION -> error(
-            "SEND_NOTIFICATION is temporarily unsupported until notification transport is implemented",
-         )
+         TaskerAction.SEND_NOTIFICATION -> runNotification(bundle).let { null }
       }
    }
 
@@ -69,6 +67,26 @@ class TaskerActionRunner(
 
    private fun timeout(bundle: Bundle) =
       bundle.getLong(BundleKeys.TIMEOUT_MS, 60_000L).coerceAtLeast(1L).milliseconds
+
+   private suspend fun runNotification(bundle: Bundle) {
+      val request = NotificationRequest.fromBundle(bundle)
+      if (request.title.isBlank()) throw TaskerInvalidInputException("Title is mandatory")
+      if (request.title.toByteArray(Charsets.UTF_8).size > 64) throw TaskerInvalidInputException("Title is too long")
+      if (request.body.toByteArray(Charsets.UTF_8).size > 128) throw TaskerInvalidInputException("Body is too long")
+      if (request.durationMs !in 0..300_000) throw TaskerInvalidInputException("Duration is out of range")
+      try {
+         interactiveSessionManager.sendNotification(
+            request.title,
+            request.body,
+            request.vibration.ordinal,
+            request.durationMs,
+         )
+      } catch (e: TaskerInvalidInputException) {
+         throw e
+      } catch (e: Exception) {
+         throw TaskerInvalidInputException(e.message ?: "Failed to send notification")
+      }
+   }
 
    private suspend fun runToggleAction(bundle: Bundle) {
       val directoryId = bundle.getInt(BundleKeys.DIRECTORY_ID, 1)

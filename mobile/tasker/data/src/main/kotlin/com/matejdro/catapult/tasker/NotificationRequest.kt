@@ -23,12 +23,13 @@ data class NotificationRequest(
             "double" -> VibrationStyle.DOUBLE
             else -> throw TaskerInvalidInputException("Unknown vibration style: '$vibrationValue'")
          }
-         return NotificationRequest(
+         val request = NotificationRequest(
             title = bundle.getString(BundleKeys.TITLE).orEmpty(),
             body = bundle.getString(BundleKeys.MESSAGE).orEmpty(),
             vibration = vibration,
             durationMs = bundle.getLong(BundleKeys.NOTIFICATION_DURATION_MS, 5_000L),
          )
+         return request
       }
    }
 }

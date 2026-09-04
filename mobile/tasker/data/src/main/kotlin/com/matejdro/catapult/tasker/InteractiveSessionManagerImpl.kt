@@ -53,6 +53,7 @@ class InteractiveSessionManagerImpl(
             ?: return InteractiveTaskerResult.Failed("Watch connection is unavailable")
          ActiveSession(nextSessionId++, entry.key, entry.value, request, CompletableDeferred()).also { activeSession = it }
       }
+
       try {
          try {
             session.sender.send(session.id, request)
@@ -75,6 +76,13 @@ class InteractiveSessionManagerImpl(
             mutex.withLock { if (activeSession?.id == session.id) activeSession = null }
          }
       }
+
+   }
+
+   override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+      val sender = synchronized(senders) { senders.values.firstOrNull() }
+         ?: error("Watch connection is unavailable")
+      sender.sendNotification(title, body, vibration, durationMs)
    }
 
    override fun cancelActive(reason: String) {

@@ -61,10 +61,27 @@ class WatchappConnectionImpl(
       val sent = withTimeoutOrNull(INTERACTIVE_SEND_TIMEOUT) {
          packets.forEach { packetQueue.sendPacket(it) }
       }
+
       if (sent == null) {
          logcat { "Interactive request could not be sent before the connection timed out" }
          throw InteractiveSendTimeoutException()
       }
+   }
+
+   override suspend fun sendNotification(packet: PebbleDictionary) {
+      val limit = watchBufferSize
+      require(limit > 0) { "Watch connection is unavailable" }
+      packetQueue.sendPacket(packet)
+   }
+
+   override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+      val style = WatchNotificationMessage.Vibration.entries.getOrNull(vibration)
+        ?: throw IllegalArgumentException("Invalid vibration value")
+      sendNotification(WatchNotificationMessage.Show(title, body, style, durationMs))
+   }
+
+   suspend fun sendNotification(notification: WatchNotificationMessage.Show) {
+      sendNotification(notification.toPacket(watchBufferSize))
    }
 
    override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) {
