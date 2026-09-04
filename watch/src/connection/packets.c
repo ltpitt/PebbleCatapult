@@ -44,6 +44,7 @@ static bool interactive_uint_tuple_width(const Tuple* tuple, uint16_t width)
 
 static void interactive_dismiss_windows()
 {
+    window_notification_dismiss_all();
     window_interactive_list_dismiss();
     window_interactive_confirm_dismiss();
 }

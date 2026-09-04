@@ -45,7 +45,7 @@ class TaskerActionRunner(
          TaskerAction.DELETE_PIN -> runDeletePin(bundle).let { null }
          TaskerAction.SHOW_LIST -> runInteractiveList(bundle)
          TaskerAction.SHOW_CONFIRMATION -> runInteractiveConfirmation(bundle)
-         TaskerAction.SEND_NOTIFICATION -> runNotification(bundle).let { null }
+         TaskerAction.SEND_NOTIFICATION -> runNotification(bundle)
       }
    }
 
@@ -68,7 +68,7 @@ class TaskerActionRunner(
    private fun timeout(bundle: Bundle) =
       bundle.getLong(BundleKeys.TIMEOUT_MS, 60_000L).coerceAtLeast(1L).milliseconds
 
-   private suspend fun runNotification(bundle: Bundle) {
+   private suspend fun runNotification(bundle: Bundle): InteractiveTaskerResult {
       val request = NotificationRequest.fromBundle(bundle)
       if (request.title.isBlank()) throw TaskerInvalidInputException("Title is mandatory")
       if (request.title.toByteArray(Charsets.UTF_8).size > 64) throw TaskerInvalidInputException("Title is too long")
@@ -86,6 +86,7 @@ class TaskerActionRunner(
       } catch (e: IllegalArgumentException) {
          throw TaskerInvalidInputException(e.message ?: "Invalid notification")
       }
+      return InteractiveTaskerResult.Success
    }
 
    private suspend fun runToggleAction(bundle: Bundle) {

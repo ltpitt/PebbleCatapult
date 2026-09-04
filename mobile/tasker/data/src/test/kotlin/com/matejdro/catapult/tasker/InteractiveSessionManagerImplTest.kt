@@ -319,6 +319,81 @@ class InteractiveSessionManagerImplTest {
       sentTo shouldBe listOf("watch-1")
    }
 
+   @Test
+   fun `notification cancels active session before dispatch`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val events = mutableListOf<String>()
+      val sender = object : InteractiveRequestSender {
+         override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) {
+            events += "interactive"
+         }
+         override suspend fun cancel(sessionId: UInt, reason: String) {
+            events += "cancel:$reason"
+         }
+         override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+            events += "notification"
+         }
+      }
+      manager.registerSender("watch", sender)
+      val active = async {
+         manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
+      }
+      runCurrent()
+
+      manager.sendNotification("Title", "Body", 0, 1_000)
+
+      active.await() shouldBe InteractiveTaskerResult.Cancelled("Interactive session replaced by notification")
+      events shouldBe listOf("interactive", "cancel:Interactive session replaced by notification", "notification")
+   }
+
+   @Test
+   fun `notification still dispatches when no session is active`() = runTest {
+      val manager = newManager()
+      var dispatched = false
+      manager.registerSender(object : InteractiveRequestSender {
+         override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) = Unit
+         override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+            dispatched = true
+         }
+      })
+
+      manager.sendNotification("Title", "Body", 0, 1_000)
+
+      dispatched shouldBe true
+   }
+
+   @Test
+   fun `notification cancels session on another watch and survives cancel transport failure`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      var cancelled = false
+      var notified = false
+      val activeSender = object : InteractiveRequestSender {
+         override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) = Unit
+         override suspend fun cancel(sessionId: UInt, reason: String) {
+            cancelled = true
+            error("disconnected")
+         }
+      }
+      manager.registerSender("watch-2", activeSender)
+      val notifyingSender = object : InteractiveRequestSender {
+         override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) = Unit
+         override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+            notified = true
+         }
+      }
+      val active = async {
+         manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
+      }
+      runCurrent()
+      manager.registerSender("watch-1", notifyingSender)
+
+      manager.sendNotification("Title", "Body", 0, 1_000)
+
+      active.await() shouldBe InteractiveTaskerResult.Cancelled("Interactive session replaced by notification")
+      cancelled shouldBe true
+      notified shouldBe true
+   }
+
    private fun newManager() = InteractiveSessionManagerImpl(timeout = 1.seconds).also {
       it.registerSender(InteractiveRequestSender { _, _ -> })
    }

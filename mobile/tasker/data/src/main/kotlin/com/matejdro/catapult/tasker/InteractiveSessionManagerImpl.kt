@@ -80,6 +80,17 @@ class InteractiveSessionManagerImpl(
    }
 
    override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+      val session = mutex.withLock {
+         activeSession?.also {
+            activeSession = null
+            it.result.complete(InteractiveTaskerResult.Cancelled("Interactive session replaced by notification"))
+         }
+      }
+      if (session != null) {
+         runCatching {
+            session.sender.cancel(session.id, "Interactive session replaced by notification")
+         }
+      }
       // Notifications have no watch selector, so use the connected watch with the lowest ID.
       // Sorting avoids depending on connection/map insertion order when multiple watches are connected.
       val sender = synchronized(senders) { senders.entries.minByOrNull { it.key }?.value }

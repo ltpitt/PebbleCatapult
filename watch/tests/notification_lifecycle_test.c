@@ -112,6 +112,18 @@ static void test_unload_cancels_timer(void)
     assert(recorder.cancellations == 1);
 }
 
+static void test_timer_firing_after_interactive_replacement_is_ignored(void)
+{
+    NotificationLifecycle lifecycle;
+    TimerRecorder recorder = {0};
+    init_lifecycle(&lifecycle, &recorder);
+    notification_lifecycle_show(&lifecycle, 5000);
+    uint32_t generation = notification_lifecycle_generation(&lifecycle);
+    notification_lifecycle_dismiss(&lifecycle);
+    assert(!notification_lifecycle_timer_fired(&lifecycle, generation));
+    assert(!lifecycle.visible);
+}
+
 int main(void)
 {
     test_back_dismissal();
@@ -121,5 +133,6 @@ int main(void)
     test_timer_registration_failure_persists_for_manual_dismissal();
     test_replacement_ignores_old_timer();
     test_unload_cancels_timer();
+    test_timer_firing_after_interactive_replacement_is_ignored();
     return 0;
 }

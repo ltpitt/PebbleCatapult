@@ -80,7 +80,7 @@ class TaskerActionRunnerTest {
          putLong(BundleKeys.NOTIFICATION_DURATION_MS, 5_000)
       }
 
-      runner.run(bundle)
+      runner.run(bundle) shouldBe InteractiveTaskerResult.Success
       interactiveManager.notifications.single() shouldBe
          NotificationRequest("Door", "Front door opened", VibrationStyle.SHORT, 5_000)
       NotificationRequest.fromBundle(bundle) shouldBe

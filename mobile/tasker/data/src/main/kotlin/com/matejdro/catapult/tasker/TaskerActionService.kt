@@ -130,6 +130,7 @@ private fun failureBundle(message: String) = Bundle().apply {
 
 internal fun InteractiveTaskerResult.toTaskerBundle() = Bundle().apply {
    putString("%catapult_status", when (this@toTaskerBundle) {
+       InteractiveTaskerResult.Success -> "success"
       is InteractiveTaskerResult.Selection -> "success"
       is InteractiveTaskerResult.Confirmation -> if (accepted) "success" else "failed"
       is InteractiveTaskerResult.Cancelled -> "cancelled"
@@ -147,10 +148,12 @@ internal fun InteractiveTaskerResult.toTaskerBundle() = Bundle().apply {
 }
 
 internal fun InteractiveTaskerResult.isSuccess() =
-   this is InteractiveTaskerResult.Selection ||
+   this is InteractiveTaskerResult.Success ||
+      this is InteractiveTaskerResult.Selection ||
       (this is InteractiveTaskerResult.Confirmation && accepted)
 
 internal fun InteractiveTaskerResult.reason() = when (this) {
+    InteractiveTaskerResult.Success -> "Success"
    is InteractiveTaskerResult.Cancelled -> reason
    is InteractiveTaskerResult.TimedOut -> reason
    is InteractiveTaskerResult.Failed -> reason
