@@ -58,7 +58,17 @@ sealed interface InteractiveWatchMessage {
       override val sessionId: UInt,
       val selectedItemId: String,
       val selectedItemValue: String,
-   ) : InteractiveWatchMessage
+   ) : InteractiveWatchMessage {
+      init {
+         validate()
+      }
+
+      internal fun validate() {
+         require(selectedItemId.isNotBlank()) { "Selected item id must not be blank" }
+         require(selectedItemId.utf8Length() <= MAX_ITEM_ID_BYTES) { "Selected item id is too long" }
+         require(selectedItemValue.utf8Length() <= MAX_ITEM_VALUE_BYTES) { "Selected item value is too long" }
+      }
+   }
 
    data class ConfirmationResult(
       override val sessionId: UInt,
@@ -114,9 +124,12 @@ sealed interface InteractiveWatchMessage {
       is Cancel -> packet(PACKET_CANCEL, maxPayloadBytes, 0, 1) {
          put(9u, PebbleDictionaryItem.Text(reason))
       }
-      is ListSelection -> packet(PACKET_LIST_SELECTION, maxPayloadBytes, 0, 1) {
-         put(8u, PebbleDictionaryItem.Text(selectedItemId))
-         put(7u, PebbleDictionaryItem.Text(selectedItemValue))
+      is ListSelection -> {
+         validate()
+         packet(PACKET_LIST_SELECTION, maxPayloadBytes, 0, 1) {
+            put(8u, PebbleDictionaryItem.Text(selectedItemId))
+            put(7u, PebbleDictionaryItem.Text(selectedItemValue))
+         }
       }
       is ConfirmationResult -> packet(PACKET_CONFIRMATION_RESULT, maxPayloadBytes, 0, 1) {
          put(8u, PebbleDictionaryItem.UInt8(if (accepted) 1u else 0u))
@@ -152,6 +165,7 @@ sealed interface InteractiveWatchMessage {
          val total = (data[4u] as? PebbleDictionaryItem.UInt16)?.value
             ?: throw IllegalArgumentException("Missing chunk count")
          require(total > 0.toUShort()) { "Chunk count must be positive" }
+         require(sequence.toLong() < total.toLong()) { "Chunk sequence is out of range" }
          val terminalMarker = (data[5u] as? PebbleDictionaryItem.UInt8)?.value
             ?: throw IllegalArgumentException("Missing terminal marker")
          require(terminalMarker == 0u.toUByte() || terminalMarker == 1u.toUByte()) {
@@ -198,14 +212,22 @@ sealed interface InteractiveWatchMessage {
             }
             PACKET_LIST_SELECTION -> {
                require(total == 1.toUShort() && terminal) { "Selection must be terminal" }
-               ListSelection(session, text(8u)!!, text(7u)!!)
+               ListSelection(
+                  session,
+                  text(8u) ?: throw IllegalArgumentException("Missing selected item id"),
+                  text(7u) ?: throw IllegalArgumentException("Missing selected item value"),
+               )
             }
             PACKET_CONFIRMATION_RESULT -> {
                require(total == 1.toUShort() && terminal) { "Result must be terminal" }
+               val result = (data[8u] as? PebbleDictionaryItem.UInt8)?.value
+                  ?: throw IllegalArgumentException("Missing confirmation result")
+               require(result == 0u.toUByte() || result == 1u.toUByte()) {
+                  "Invalid confirmation result"
+               }
                ConfirmationResult(
                   session,
-                  ((data[8u] as? PebbleDictionaryItem.UInt8)?.value
-                     ?: throw IllegalArgumentException("Missing confirmation result")) == 1u.toUByte(),
+                  result == 1u.toUByte(),
                )
             }
             PACKET_CANCEL_OR_ERROR -> {

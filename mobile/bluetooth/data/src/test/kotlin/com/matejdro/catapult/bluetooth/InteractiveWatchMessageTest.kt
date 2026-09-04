@@ -81,6 +81,46 @@ class InteractiveWatchMessageTest {
    }
 
    @Test
+   fun `selection validates id and value byte limits`() {
+      shouldThrow<IllegalArgumentException> {
+         InteractiveWatchMessage.ListSelection(42u, " ", "Home")
+      }
+      shouldThrow<IllegalArgumentException> {
+         InteractiveWatchMessage.ListSelection(42u, "é".repeat(17), "Home")
+      }
+      shouldThrow<IllegalArgumentException> {
+         InteractiveWatchMessage.ListSelection(42u, "home", "é".repeat(33))
+      }
+   }
+
+   @Test
+   fun `selection rejects missing and wrong typed fields`() {
+      val packet = InteractiveWatchMessage.ListSelection(42u, "home", "Home").toPacket(256)
+      shouldThrow<IllegalArgumentException> {
+         InteractiveWatchMessage.decode(packet - 8u)
+      }
+      shouldThrow<IllegalArgumentException> {
+         InteractiveWatchMessage.decode(packet.toMutableMap().apply {
+            put(8u, PebbleDictionaryItem.UInt8(1u))
+         })
+      }
+   }
+
+   @Test
+   fun `decoding rejects chunk sequence at total`() {
+      val packet = InteractiveWatchMessage.ShowList(42u, "Places", emptyList()).packets(256).single()
+         .toMutableMap().apply { put(3u, PebbleDictionaryItem.UInt32(1u)); put(5u, PebbleDictionaryItem.UInt8(0u)) }
+      shouldThrow<IllegalArgumentException> { InteractiveWatchMessage.decode(packet) }
+   }
+
+   @Test
+   fun `decoding rejects invalid confirmation result`() {
+      val packet = InteractiveWatchMessage.ConfirmationResult(42u, true).toPacket(256)
+         .toMutableMap().apply { put(8u, PebbleDictionaryItem.UInt8(2u)) }
+      shouldThrow<IllegalArgumentException> { InteractiveWatchMessage.decode(packet) }
+   }
+
+   @Test
    fun `cancel carries a reason`() {
       val cancel = InteractiveWatchMessage.Cancel(42u, "user cancelled")
       InteractiveWatchMessage.decode(cancel.toPacket(256)) shouldBe cancel
