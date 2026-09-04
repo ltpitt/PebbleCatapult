@@ -74,14 +74,19 @@ class WatchappConnectionImplTest {
 
    private class RecordingInteractiveSessionManager : InteractiveSessionManager {
       val results = mutableListOf<Pair<UInt, InteractiveTaskerResult>>()
+      var activeSessionId: UInt? = 42u
 
       override suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult =
          error("Not used")
 
+      override fun registerSender(sender: com.matejdro.catapult.tasker.InteractiveRequestSender) = Unit
+
       override fun cancelActive(reason: String) = Unit
 
       override suspend fun acceptResult(sessionId: UInt, result: InteractiveTaskerResult) {
-         results += sessionId to result
+         if (sessionId == activeSessionId) {
+            results += sessionId to result
+         }
       }
    }
 

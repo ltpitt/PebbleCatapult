@@ -12,6 +12,22 @@ import kotlin.time.Duration.Companion.seconds
 
 class InteractiveSessionManagerImplTest {
    @Test
+   fun `await result sends request through registered bridge`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      var sent: Pair<UInt, InteractiveTaskerRequest>? = null
+      manager.registerSender(InteractiveRequestSender { sessionId, request ->
+         sent = sessionId to request
+      })
+      val request = InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?")
+      val result = async { manager.awaitResult(request) }
+      runCurrent()
+
+      sent shouldBe (1u to request)
+      manager.acceptResult(1u, InteractiveTaskerResult.Confirmation(true))
+      result.await() shouldBe InteractiveTaskerResult.Confirmation(true)
+   }
+
+   @Test
    fun `matching list selection completes active session`() = runTest {
       val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
       val request = InteractiveTaskerRequest.List(

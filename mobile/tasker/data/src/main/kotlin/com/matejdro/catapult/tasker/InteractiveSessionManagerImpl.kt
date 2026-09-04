@@ -24,6 +24,11 @@ class InteractiveSessionManagerImpl(
    private val mutex = Mutex()
    private var nextSessionId = 1u
    private var activeSession: ActiveSession? = null
+   private var sender: InteractiveRequestSender = InteractiveRequestSender { _, _ -> }
+
+   override fun registerSender(sender: InteractiveRequestSender) {
+      this.sender = sender
+   }
 
    override suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult {
       val session = mutex.withLock {
@@ -37,6 +42,13 @@ class InteractiveSessionManagerImpl(
       }
 
       try {
+         try {
+            sender.send(session.id, request)
+         } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+         } catch (e: Exception) {
+            return InteractiveTaskerResult.Failed(e.message ?: "Failed to send interactive request")
+         }
          return withTimeoutOrNull(timeout) {
             session.result.await()
          } ?: InteractiveTaskerResult.TimedOut("Interactive session timed out")

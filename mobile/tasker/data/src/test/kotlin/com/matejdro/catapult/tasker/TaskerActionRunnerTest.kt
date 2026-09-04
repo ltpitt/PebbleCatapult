@@ -35,13 +35,43 @@ class TaskerActionRunnerTest {
    private val pebbleSender = FakePebbleSender(scope.virtualTimeProvider())
    private val pebbleInfoRetriever = FakePebbleInfoRetriever()
    private val openController = FakeWatchappOpenController()
+   private val interactiveManager = RecordingInteractiveSessionManager()
    private val runner = TaskerActionRunner(
       repo,
       pebbleSender,
       pebbleInfoRetriever,
       openController,
-      scope.virtualTimeProvider()
+      scope.virtualTimeProvider(),
+      interactiveManager,
    )
+
+   private class RecordingInteractiveSessionManager : InteractiveSessionManager {
+      val requests = mutableListOf<InteractiveTaskerRequest>()
+      override fun registerSender(sender: InteractiveRequestSender) = Unit
+      override suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult {
+         requests += request
+         return when (request) {
+            is InteractiveTaskerRequest.List -> InteractiveTaskerResult.Selection(
+               request.items.first().id, request.items.first().value,
+            )
+            is InteractiveTaskerRequest.Confirmation -> InteractiveTaskerResult.Confirmation(true)
+         }
+      }
+      override fun cancelActive(reason: String) = Unit
+      override suspend fun acceptResult(sessionId: UInt, result: InteractiveTaskerResult) = Unit
+   }
+
+   @Test
+   fun `Run interactive confirmation through session manager`() = scope.runTest {
+      runner.run(Bundle().apply {
+         putString(BundleKeys.ACTION, TaskerAction.SHOW_CONFIRMATION.name)
+         putString(BundleKeys.TITLE, "Confirm")
+         putString(BundleKeys.MESSAGE, "Proceed?")
+      })
+
+      interactiveManager.requests.single() shouldBe
+         InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?")
+   }
 
    @Test
    fun `Run toggle action`() = scope.runTest {

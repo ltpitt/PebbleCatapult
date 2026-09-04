@@ -5,6 +5,8 @@ import com.matejdro.catapult.actionlist.api.CatapultActionRepository
 import com.matejdro.catapult.common.flow.firstData
 import com.matejdro.catapult.tasker.TaskerTaskStarter
 import com.matejdro.catapult.tasker.InteractiveSessionManager
+import com.matejdro.catapult.tasker.InteractiveTaskerRequest
+import com.matejdro.catapult.tasker.InteractiveRequestSender
 import com.matejdro.catapult.tasker.InteractiveTaskerResult
 import com.matejdro.pebble.bluetooth.common.PacketQueue
 import com.matejdro.pebble.bluetooth.common.WatchAppConnection
@@ -15,6 +17,7 @@ import com.matejdro.pebble.bluetooth.common.util.requireUint
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.binding
 import io.rebble.pebblekit2.common.model.PebbleDictionary
 import io.rebble.pebblekit2.common.model.PebbleDictionaryItem
 import io.rebble.pebblekit2.common.model.PebbleDictionaryItem.UInt16
@@ -29,7 +32,7 @@ import kotlinx.coroutines.withTimeout
 import logcat.logcat
 
 @Inject
-@ContributesBinding(WatchappConnectionScope::class)
+@ContributesBinding(WatchappConnectionScope::class, binding<WatchAppConnection>())
 @Suppress("MagicNumber") // Packet processing involves a lot of numbers, it would be less readable to make consts
 class WatchappConnectionImpl(
    coroutineScope: CoroutineScope,
@@ -39,24 +42,41 @@ class WatchappConnectionImpl(
    private val packetQueue: PacketQueue,
    private val bucketSyncWatchLoop: BucketSyncWatchLoop,
    private val interactiveSessionManager: InteractiveSessionManager,
-) : WatchAppConnection {
+) : WatchAppConnection, InteractiveRequestSender {
    private var watchBufferSize: Int = 0
 
    init {
       coroutineScope.launch {
          packetQueue.runQueue()
       }
+      interactiveSessionManager.registerSender(this)
+   }
 
-      override suspend fun sendInteractivePackets(packets: List<PebbleDictionary>) {
-         try {
-            withTimeout(INTERACTIVE_SEND_TIMEOUT) {
-               packets.forEach { packetQueue.sendPacket(it) }
-            }
-         } catch (e: TimeoutCancellationException) {
-            logcat { "Interactive request could not be sent before the connection timed out" }
-            throw e
-         }
+   override suspend fun sendInteractivePackets(packets: List<PebbleDictionary>) {
+      try {
+        withTimeout(INTERACTIVE_SEND_TIMEOUT) {
+           packets.forEach { packetQueue.sendPacket(it) }
+        }
+      } catch (e: TimeoutCancellationException) {
+        logcat { "Interactive request could not be sent before the connection timed out" }
+        throw e
       }
+   }
+
+   override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) {
+      val message = when (request) {
+        is InteractiveTaskerRequest.List -> InteractiveWatchMessage.ShowList(
+           sessionId,
+           request.title,
+           request.items.map { InteractiveWatchMessage.Item(it.id, it.value) },
+        )
+        is InteractiveTaskerRequest.Confirmation -> InteractiveWatchMessage.ShowConfirmation(
+           sessionId,
+           request.title,
+           request.message,
+        )
+      }
+      sendInteractiveRequest(message)
    }
 
    override suspend fun onPacketReceived(data: PebbleDictionary): ReceiveResult {

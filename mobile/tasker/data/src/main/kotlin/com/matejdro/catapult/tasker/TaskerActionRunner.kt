@@ -30,6 +30,7 @@ class TaskerActionRunner(
    private val pebbleInfoRetriever: PebbleInfoRetriever,
    private val openController: WatchappOpenController,
    private val timeProvider: TimeProvider,
+   private val interactiveSessionManager: InteractiveSessionManager,
 ) {
    suspend fun run(bundle: Bundle) {
       val actionName = bundle.getString(BundleKeys.ACTION) ?: error("Missing action from bundle")
@@ -41,6 +42,42 @@ class TaskerActionRunner(
          TaskerAction.SYNC_NOW -> runSyncAction(bundle)
          TaskerAction.CREATE_PIN -> runCreatePin(bundle)
          TaskerAction.DELETE_PIN -> runDeletePin(bundle)
+         TaskerAction.SHOW_LIST -> runInteractiveList(bundle)
+         TaskerAction.SHOW_CONFIRMATION -> runInteractiveConfirmation(bundle)
+      }
+   }
+
+   private fun InteractiveTaskerResult.reason(): String = when (this) {
+      is InteractiveTaskerResult.Cancelled -> reason
+      is InteractiveTaskerResult.TimedOut -> reason
+      is InteractiveTaskerResult.Failed -> reason
+      is InteractiveTaskerResult.Selection -> "Unexpected selection result"
+      is InteractiveTaskerResult.Confirmation -> "Confirmation rejected"
+   }
+
+   private suspend fun runInteractiveList(bundle: Bundle) {
+      val title = bundle.getString(BundleKeys.TITLE)?.takeIf { it.isNotBlank() }
+         ?: throw TaskerInvalidInputException("Title is mandatory")
+      val items = bundle.getString(BundleKeys.ITEMS).orEmpty().split('\n').map {
+         val separator = it.indexOf('=')
+         if (separator <= 0 || separator == it.lastIndex) {
+           throw TaskerInvalidInputException("Items must use id=value format")
+         }
+         InteractiveTaskerRequest.Item(it.substring(0, separator), it.substring(separator + 1))
+      }
+      val result = interactiveSessionManager.awaitResult(InteractiveTaskerRequest.List(title, items))
+      if (result !is InteractiveTaskerResult.Selection) {
+         throw TaskerInvalidInputException(result.reason())
+      }
+   }
+
+   private suspend fun runInteractiveConfirmation(bundle: Bundle) {
+      val title = bundle.getString(BundleKeys.TITLE)?.takeIf { it.isNotBlank() }
+         ?: throw TaskerInvalidInputException("Title is mandatory")
+      val message = bundle.getString(BundleKeys.MESSAGE).orEmpty()
+      val result = interactiveSessionManager.awaitResult(InteractiveTaskerRequest.Confirmation(title, message))
+      if (result !is InteractiveTaskerResult.Confirmation || !result.accepted) {
+         throw TaskerInvalidInputException(result.reason())
       }
    }
 

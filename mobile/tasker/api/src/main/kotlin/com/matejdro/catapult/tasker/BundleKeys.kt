@@ -14,4 +14,6 @@ object BundleKeys {
    const val ICON = "ICON"
 
    const val ONLY_ON_WATCHFACE = "ONLY_ON_WATCHFACE"
+   const val ITEMS = "ITEMS"
+   const val MESSAGE = "MESSAGE"
 }

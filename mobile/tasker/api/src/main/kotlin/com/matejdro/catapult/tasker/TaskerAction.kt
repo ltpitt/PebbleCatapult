@@ -5,4 +5,6 @@ enum class TaskerAction {
    SYNC_NOW,
    CREATE_PIN,
    DELETE_PIN,
+   SHOW_LIST,
+   SHOW_CONFIRMATION,
 }
