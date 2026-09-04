@@ -70,6 +70,29 @@ the native menu (one item per chunk) and presents confirmation as Accept/Cancel;
 7 immediately returns packet 10. Older watches negotiate only the version response and
 continue to receive no bucket data until upgraded, avoiding unsafe mixed layouts.
 
+### Show notification (packet 11)
+
+Packet 11 is a phone-to-watch, one-way notification. It is not an interactive
+session and therefore has no session ID, chunk fields, or response packet.
+
+* `2` - title (UTF-8 text, at most 64 bytes)
+* `7` - body (UTF-8 text, at most 128 bytes)
+* `6` - vibration (`uint8`: `0` none, `1` short, `2` double)
+* `8` - display duration in milliseconds (`uint32`, 0–300000)
+
+The title and body must be valid, NUL-terminated UTF-8 strings and must fit
+their byte limits; they are never truncated. A duration of zero leaves the
+notification open until Back or Select. A non-zero duration automatically
+dismisses the notification and returns to the previous screen when the timer
+expires. Showing a new notification dismisses the previous notification and
+replaces its timer. The watch vibrates once using the requested pattern.
+
+Packet 11 is available only when protocol negotiation reports version 4.
+When the watch reports an older (or otherwise mismatched) version, the phone
+responds with its version only and does not send bucket data or packet 11.
+Notifications are fire-and-forget: the phone reports dispatch success or a
+send/connection failure, while the watch sends no acknowledgement or result.
+
 ### Re-start bucketsync sync (packet 2)
 
 Sent to the watch when the watchapp is open and buckets on the phone change

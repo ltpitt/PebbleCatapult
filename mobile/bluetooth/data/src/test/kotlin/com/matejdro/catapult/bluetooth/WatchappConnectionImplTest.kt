@@ -118,6 +118,69 @@ class WatchappConnectionImplTest {
    }
 
    @Test
+   fun `Previous protocol version cannot receive notifications`() = scope.runTest {
+      connection.onPacketReceived(
+         mapOf(
+            0u to PebbleDictionaryItem.UInt32(0u),
+            1u to PebbleDictionaryItem.UInt32(PROTOCOL_VERSION - 1u),
+         )
+      )
+      runCurrent()
+
+      var failed = false
+      try {
+         connection.sendNotification(
+            WatchNotificationMessage.Show(
+               "Title", "Body", WatchNotificationMessage.Vibration.NONE, 0,
+            )
+         )
+      } catch (_: IllegalArgumentException) {
+         failed = true
+      }
+      failed shouldBe true
+      sender.sentData shouldContainExactly listOf(
+         mapOf(
+            0u to PebbleDictionaryItem.UInt8(1u),
+            1u to PebbleDictionaryItem.UInt16(PROTOCOL_VERSION),
+         )
+      )
+   }
+
+   @Test
+   fun `Current protocol version sends a notification packet`() = scope.runTest {
+      receiveStandardHelloPacket()
+      runCurrent()
+
+      connection.sendNotification(
+         WatchNotificationMessage.Show(
+            "Title", "Body", WatchNotificationMessage.Vibration.DOUBLE, 5_000,
+         )
+      )
+      sender.sentData.last() shouldBe mapOf(
+         0u to PebbleDictionaryItem.UInt32(11u),
+         2u to PebbleDictionaryItem.Text("Title"),
+         7u to PebbleDictionaryItem.Text("Body"),
+         6u to PebbleDictionaryItem.UInt8(2u),
+         8u to PebbleDictionaryItem.UInt32(5_000u),
+      )
+   }
+
+   @Test
+   fun `Malformed notification packet is rejected`() = scope.runTest {
+      val result = connection.onPacketReceived(
+         mapOf(
+            0u to PebbleDictionaryItem.UInt32(11u),
+            2u to PebbleDictionaryItem.Text("Title"),
+            6u to PebbleDictionaryItem.UInt8(3u),
+            7u to PebbleDictionaryItem.Text("Body"),
+            8u to PebbleDictionaryItem.UInt32(0u),
+         )
+      )
+
+      result shouldBe ReceiveResult.Nack
+   }
+
+   @Test
    fun `Send a list of updated buckets`() = scope.runTest {
       bucketSyncRepository.updateBucket(1u, byteArrayOf(1))
       bucketSyncRepository.updateBucket(2u, byteArrayOf(2))
