@@ -166,14 +166,14 @@ class WatchappConnectionImplTest {
    }
 
    @Test
-   fun `Malformed notification packet is rejected`() = scope.runTest {
+   fun `Unsupported inbound notification packet is rejected`() = scope.runTest {
       val result = connection.onPacketReceived(
          mapOf(
             0u to PebbleDictionaryItem.UInt32(11u),
             2u to PebbleDictionaryItem.Text("Title"),
-            6u to PebbleDictionaryItem.UInt8(3u),
+            6u to PebbleDictionaryItem.UInt8(1u),
             7u to PebbleDictionaryItem.Text("Body"),
-            8u to PebbleDictionaryItem.UInt32(0u),
+            8u to PebbleDictionaryItem.UInt32(5_000u),
          )
       )
 
