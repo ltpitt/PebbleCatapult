@@ -77,12 +77,13 @@ abstract class TaskerConfigurationActivity : ComponentActivity() {
       setResult(Activity.RESULT_CANCELED)
    }
 
-   fun saveConfiguration(bundle: Bundle, message: String) {
+   fun saveConfiguration(bundle: Bundle, message: String, finish: Boolean = false) {
       val intent = Intent().apply {
          putExtra(TaskerPluginConstants.EXTRA_STRING_BLURB, message)
          putExtra(TaskerPluginConstants.EXTRA_BUNDLE, bundle)
       }
 
       setResult(RESULT_OK, intent)
+      if (finish) finish()
    }
 }

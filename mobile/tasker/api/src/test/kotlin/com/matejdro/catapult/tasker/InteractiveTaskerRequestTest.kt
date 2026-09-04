@@ -6,6 +6,22 @@ import org.junit.jupiter.api.Test
 
 class InteractiveTaskerRequestTest {
    @Test
+   fun `serializes list items as JSON without losing delimiters`() {
+      val items = listOf(InteractiveTaskerRequest.Item("a=b", "line 1\nline 2"))
+
+      InteractiveTaskerItems.decode(InteractiveTaskerItems.encode(items)) shouldBe items
+   }
+
+   @Test
+   fun `rejects malformed list item JSON and blank IDs`() {
+      listOf("", "not json", "[{}]", """[{"id":" ","value":"x"}]""").forEach {
+         org.junit.jupiter.api.assertThrows<TaskerInvalidInputException> {
+            InteractiveTaskerItems.decode(it)
+         }
+      }
+   }
+
+   @Test
    fun `preserves list item order and values`() {
       val items = listOf(
          InteractiveTaskerRequest.Item("first", "First item"),

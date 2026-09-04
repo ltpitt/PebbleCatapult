@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.matejdro.catapult.tasker.BundleKeys
 import com.matejdro.catapult.tasker.TaskerAction
+import com.matejdro.catapult.tasker.TaskerPluginConstants
 import com.matejdro.catapult.tasker.ui.TaskerConfigurationActivity
 import kotlinx.serialization.Serializable
 import si.inova.kotlinova.core.activity.requireActivity
@@ -18,6 +19,7 @@ import si.inova.kotlinova.navigation.screenkeys.ScreenKey
 import si.inova.kotlinova.navigation.screens.InjectNavigationScreen
 import si.inova.kotlinova.navigation.screens.Screen
 import androidx.compose.ui.platform.LocalContext
+import com.matejdro.catapult.tasker.InteractiveTaskerItems
 
 @InjectNavigationScreen
 class InteractiveListScreen : Screen<InteractiveListScreenKey>() {
@@ -28,14 +30,18 @@ class InteractiveListScreen : Screen<InteractiveListScreenKey>() {
       var timeout by remember { mutableStateOf(activity.existingData.getLong(BundleKeys.TIMEOUT_MS, 60_000L).toString()) }
       Column(Modifier.padding(16.dp)) {
          OutlinedTextField(title, { title = it }, label = { Text("Title") })
-         OutlinedTextField(items, { items = it }, label = { Text("Items (id=value per line)") })
+         OutlinedTextField(items, { items = it }, label = { Text("Items (JSON array of id/value objects)") })
          OutlinedTextField(timeout, { timeout = it }, label = { Text("Timeout (milliseconds)") })
          Button(onClick = { activity.saveConfiguration(Bundle().apply {
             putString(BundleKeys.ACTION, TaskerAction.SHOW_LIST.name)
             putString(BundleKeys.TITLE, title)
             putString(BundleKeys.ITEMS, items)
             putLong(BundleKeys.TIMEOUT_MS, timeout.toLongOrNull() ?: 60_000L)
-         }, title) }) { Text("Save") }
+            putString(
+               TaskerPluginConstants.VARIABLE_REPLACE_KEYS,
+               "%catapult_status %catapult_result_id %catapult_result_value",
+            )
+         }, title, finish = true) }) { Text("Save") }
       }
    }
 }
@@ -56,7 +62,8 @@ class InteractiveConfirmationScreen : Screen<InteractiveConfirmationScreenKey>()
             putString(BundleKeys.TITLE, title)
             putString(BundleKeys.MESSAGE, message)
             putLong(BundleKeys.TIMEOUT_MS, timeout.toLongOrNull() ?: 60_000L)
-         }, title) }) { Text("Save") }
+            putString(TaskerPluginConstants.VARIABLE_REPLACE_KEYS, "%catapult_status")
+         }, title, finish = true) }) { Text("Save") }
       }
    }
 }

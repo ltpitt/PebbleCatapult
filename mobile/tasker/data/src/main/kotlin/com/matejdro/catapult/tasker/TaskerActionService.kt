@@ -72,10 +72,7 @@ class TaskerActionService : Service() {
                this@TaskerActionService,
                intent,
                TaskerPluginConstants.RESULT_CODE_FAILED,
-               Bundle().apply {
-                  putString("%err", "1")
-                  putString("%errmsg", "Cancelled")
-               }
+               failureBundle("Cancelled")
             )
             throw e
          } catch (e: Exception) {
@@ -84,10 +81,7 @@ class TaskerActionService : Service() {
                this@TaskerActionService,
                intent,
                TaskerPluginConstants.RESULT_CODE_FAILED,
-               Bundle().apply {
-                  putString("%err", "1")
-                  putString("%errmsg", e.message)
-               }
+               failureBundle(e.message ?: e::class.simpleName ?: "Tasker action failed")
             )
          } finally {
             val leftTasks = runningTasks.decrementAndGet()
@@ -95,6 +89,7 @@ class TaskerActionService : Service() {
                logcat { "Stopping service" }
                stopSelf()
             }
+
          }
       }
 
@@ -125,6 +120,12 @@ class TaskerActionService : Service() {
          FOREGROUND_SERVICE_TYPE_SPECIAL_USE
       )
    }
+}
+
+private fun failureBundle(message: String) = Bundle().apply {
+   putString("%catapult_status", "failed")
+   putString("%err", "1")
+   putString("%errmsg", message)
 }
 
 internal fun InteractiveTaskerResult.toTaskerBundle() = Bundle().apply {

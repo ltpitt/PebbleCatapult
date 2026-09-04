@@ -282,6 +282,22 @@ class InteractiveSessionManagerImplTest {
       first.await()
    }
 
+   @Test
+   fun `unavailable connection returns failure`() = runTest {
+      InteractiveSessionManagerImpl(timeout = 1.seconds).awaitResult(
+         InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?")
+      ) shouldBe InteractiveTaskerResult.Failed("Watch connection is unavailable")
+   }
+
+   @Test
+   fun `sender failure returns generic failure`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      manager.registerSender(InteractiveRequestSender { _, _ -> error("send failed") })
+
+      manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?")) shouldBe
+         InteractiveTaskerResult.Failed("send failed")
+   }
+
    private fun newManager() = InteractiveSessionManagerImpl(timeout = 1.seconds).also {
       it.registerSender(InteractiveRequestSender { _, _ -> })
    }

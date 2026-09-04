@@ -74,6 +74,36 @@ class TaskerActionRunnerTest {
    }
 
    @Test
+   fun `Run interactive list from JSON`() = scope.runTest {
+      runner.run(Bundle().apply {
+         putString(BundleKeys.ACTION, TaskerAction.SHOW_LIST.name)
+         putString(BundleKeys.TITLE, "Choose")
+         putString(
+            BundleKeys.ITEMS,
+            InteractiveTaskerItems.encode(
+               listOf(InteractiveTaskerRequest.Item("a=b", "Line 1\nLine 2"))
+            )
+         )
+      })
+
+      interactiveManager.requests.single() shouldBe InteractiveTaskerRequest.List(
+         "Choose",
+         listOf(InteractiveTaskerRequest.Item("a=b", "Line 1\nLine 2")),
+      )
+   }
+
+   @Test
+   fun `Reject malformed interactive list`() = scope.runTest {
+      shouldThrow<TaskerInvalidInputException> {
+         runner.run(Bundle().apply {
+            putString(BundleKeys.ACTION, TaskerAction.SHOW_LIST.name)
+            putString(BundleKeys.TITLE, "Choose")
+            putString(BundleKeys.ITEMS, """[{"id":"","value":"value"}]""")
+         })
+      }
+   }
+
+   @Test
    fun `Run toggle action`() = scope.runTest {
       repo.insert(
          CatapultAction("Action A", 10, 1, enabled = false),

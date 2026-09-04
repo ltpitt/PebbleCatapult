@@ -51,13 +51,7 @@ class TaskerActionRunner(
    private suspend fun runInteractiveList(bundle: Bundle): InteractiveTaskerResult {
       val title = bundle.getString(BundleKeys.TITLE)?.takeIf { it.isNotBlank() }
          ?: throw TaskerInvalidInputException("Title is mandatory")
-      val items = bundle.getString(BundleKeys.ITEMS).orEmpty().split('\n').map {
-         val separator = it.indexOf('=')
-         if (separator <= 0 || separator == it.lastIndex || it.substring(0, separator).isBlank()) {
-           throw TaskerInvalidInputException("Items must use id=value format")
-         }
-         InteractiveTaskerRequest.Item(it.substring(0, separator), it.substring(separator + 1))
-      }
+      val items = InteractiveTaskerItems.decode(bundle.getString(BundleKeys.ITEMS).orEmpty())
       val result = interactiveSessionManager.awaitResult(InteractiveTaskerRequest.List(title, items), timeout(bundle))
       return result
    }
