@@ -7,6 +7,9 @@ import com.matejdro.catapult.actionlist.api.CatapultAction
 import com.matejdro.catapult.actionlist.test.FakeCatapultActionRepository
 import com.matejdro.catapult.bluetooth.api.WATCHAPP_UUID
 import com.matejdro.catapult.tasker.FakeTaskerTaskStarter
+import com.matejdro.catapult.tasker.InteractiveSessionManager
+import com.matejdro.catapult.tasker.InteractiveTaskerRequest
+import com.matejdro.catapult.tasker.InteractiveTaskerResult
 import com.matejdro.pebble.bluetooth.common.PacketQueue
 import com.matejdro.pebble.bluetooth.common.test.FakePebbleSender
 import com.matejdro.pebble.bluetooth.common.test.sentData
@@ -31,6 +34,7 @@ class WatchappConnectionImplTest {
    private val bucketSyncRepository = FakeBucketSyncRepository()
    private val actionRepository = FakeCatapultActionRepository()
    private val taskerTaskStarter = FakeTaskerTaskStarter()
+   private val interactiveSessionManager = RecordingInteractiveSessionManager()
 
    private val watchappOpenController = FakeWatchappOpenController()
 
@@ -52,7 +56,8 @@ class WatchappConnectionImplTest {
       taskerTaskStarter,
       watchappOpenController,
       packetQueue,
-      bucketSyncWatchLoop
+      bucketSyncWatchLoop,
+      interactiveSessionManager,
    )
 
    @Test
@@ -65,6 +70,19 @@ class WatchappConnectionImplTest {
       runCurrent()
 
       result shouldBe ReceiveResult.Nack
+   }
+
+   private class RecordingInteractiveSessionManager : InteractiveSessionManager {
+      val results = mutableListOf<Pair<UInt, InteractiveTaskerResult>>()
+
+      override suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult =
+         error("Not used")
+
+      override fun cancelActive(reason: String) = Unit
+
+      override suspend fun acceptResult(sessionId: UInt, result: InteractiveTaskerResult) {
+         results += sessionId to result
+      }
    }
 
    @Test
@@ -275,6 +293,43 @@ class WatchappConnectionImplTest {
 
       result shouldBe ReceiveResult.Ack
       taskerTaskStarter.startedTasks.shouldContainExactly("Tasker A" to "Param")
+   }
+
+   @Test
+   fun `Send interactive list as ordered chunks`() = scope.runTest {
+      receiveStandardHelloPacket(bufferSize = 256u)
+      runCurrent()
+
+      connection.sendInteractiveRequest(
+         InteractiveWatchMessage.ShowList(
+            42u,
+            "Places",
+            listOf(InteractiveWatchMessage.Item("home", "Home"), InteractiveWatchMessage.Item("work", "Work")),
+         )
+      )
+      runCurrent()
+
+      sender.sentData.takeLast(2).map { (it[3u] as PebbleDictionaryItem.UInt32).value } shouldBe listOf(0u, 1u)
+   }
+
+   @Test
+   fun `Route matching interactive selection to session manager`() = scope.runTest {
+      val selection = InteractiveWatchMessage.ListSelection(42u, "home", "Home")
+
+      connection.onPacketReceived(selection.toPacket(256))
+
+      interactiveSessionManager.results shouldContainExactly listOf(
+         42u to InteractiveTaskerResult.Selection("home", "Home"),
+      )
+   }
+
+   @Test
+   fun `Report explicit failure when interactive connection is unavailable`() = scope.runTest {
+      connection.sendInteractiveRequest(InteractiveWatchMessage.Cancel(42u, "done"))
+
+      interactiveSessionManager.results shouldContainExactly listOf(
+         42u to InteractiveTaskerResult.Failed("Watch connection is unavailable"),
+      )
    }
 
    private suspend fun receiveStandardHelloPacket(

@@ -4,6 +4,8 @@ import com.matejdro.bucketsync.BucketSyncWatchLoop
 import com.matejdro.catapult.actionlist.api.CatapultActionRepository
 import com.matejdro.catapult.common.flow.firstData
 import com.matejdro.catapult.tasker.TaskerTaskStarter
+import com.matejdro.catapult.tasker.InteractiveSessionManager
+import com.matejdro.catapult.tasker.InteractiveTaskerResult
 import com.matejdro.pebble.bluetooth.common.PacketQueue
 import com.matejdro.pebble.bluetooth.common.WatchAppConnection
 import com.matejdro.pebble.bluetooth.common.di.WatchappConnectionGraph
@@ -21,6 +23,7 @@ import io.rebble.pebblekit2.common.model.ReceiveResult
 import io.rebble.pebblekit2.common.model.WatchIdentifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 import logcat.logcat
 
 @Inject
@@ -33,6 +36,7 @@ class WatchappConnectionImpl(
    private val watchappOpenController: WatchappOpenController,
    private val packetQueue: PacketQueue,
    private val bucketSyncWatchLoop: BucketSyncWatchLoop,
+   private val interactiveSessionManager: InteractiveSessionManager,
 ) : WatchAppConnection {
    private var watchBufferSize: Int = 0
 
@@ -55,11 +59,69 @@ class WatchappConnectionImpl(
             processStartTaskPacket(data)
          }
 
+         in InteractiveWatchMessage.PACKET_SHOW_LIST..InteractiveWatchMessage.PACKET_CANCEL_OR_ERROR -> {
+            processInteractiveResponse(data)
+         }
+
          else -> {
             logcat { "Unknown packet ID. Nacking..." }
             ReceiveResult.Nack
          }
+
       }
+   }
+
+   suspend fun sendInteractiveRequest(message: InteractiveWatchMessage) {
+      val limit = watchBufferSize
+      if (limit <= 0) {
+         failInteractive(message.sessionId, "Watch connection is unavailable")
+         return
+      }
+
+      try {
+         message.packets(limit).forEach { packetQueue.sendPacket(it) }
+      } catch (e: CancellationException) {
+         throw e
+      } catch (e: Exception) {
+         failInteractive(message.sessionId, e.message ?: "Failed to send interactive request")
+      }
+   }
+
+   suspend fun sendInteractiveMessage(message: InteractiveWatchMessage) = sendInteractiveRequest(message)
+
+   private suspend fun processInteractiveResponse(data: PebbleDictionary): ReceiveResult {
+      val message = try {
+         InteractiveWatchMessage.decode(data)
+      } catch (e: IllegalArgumentException) {
+         logcat { "Malformed interactive packet: ${e.message}" }
+         return ReceiveResult.Nack
+      }
+
+      val result = when (message) {
+         is InteractiveWatchMessage.ListSelection ->
+            InteractiveTaskerResult.Selection(message.selectedItemId, message.selectedItemValue)
+         is InteractiveWatchMessage.ConfirmationResult ->
+            InteractiveTaskerResult.Confirmation(message.accepted)
+         is InteractiveWatchMessage.Cancel ->
+            InteractiveTaskerResult.Cancelled(message.reason)
+         is InteractiveWatchMessage.CancelOrError ->
+            message.error?.let(InteractiveTaskerResult::Failed)
+               ?: InteractiveTaskerResult.Cancelled("Watch cancelled interactive session")
+         is InteractiveWatchMessage.ShowList,
+         is InteractiveWatchMessage.ShowConfirmation,
+         is InteractiveWatchMessage.ListChunk,
+         -> {
+            logcat { "Unexpected interactive request from watch" }
+            return ReceiveResult.Nack
+         }
+      }
+
+      interactiveSessionManager.acceptResult(message.sessionId, result)
+      return ReceiveResult.Ack
+   }
+
+   private suspend fun failInteractive(sessionId: UInt, reason: String) {
+      interactiveSessionManager.acceptResult(sessionId, InteractiveTaskerResult.Failed(reason))
    }
 
    private suspend fun processWatchWelcomePacket(data: PebbleDictionary): ReceiveResult {
