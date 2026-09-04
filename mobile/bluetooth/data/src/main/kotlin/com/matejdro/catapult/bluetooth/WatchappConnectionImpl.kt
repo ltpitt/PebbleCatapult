@@ -27,8 +27,7 @@ import io.rebble.pebblekit2.common.model.WatchIdentifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import logcat.logcat
 
 @Inject
@@ -59,13 +58,12 @@ class WatchappConnectionImpl(
    }
 
    override suspend fun sendInteractivePackets(packets: List<PebbleDictionary>) {
-      try {
-        withTimeout(INTERACTIVE_SEND_TIMEOUT) {
-           packets.forEach { packetQueue.sendPacket(it) }
-        }
-      } catch (e: TimeoutCancellationException) {
-        logcat { "Interactive request could not be sent before the connection timed out" }
-        throw e
+      val sent = withTimeoutOrNull(INTERACTIVE_SEND_TIMEOUT) {
+         packets.forEach { packetQueue.sendPacket(it) }
+      }
+      if (sent == null) {
+         logcat { "Interactive request could not be sent before the connection timed out" }
+         throw InteractiveSendTimeoutException()
       }
    }
 
@@ -124,7 +122,7 @@ class WatchappConnectionImpl(
 
       try {
          sendInteractivePackets(message.packets(limit))
-      } catch (e: TimeoutCancellationException) {
+      } catch (e: InteractiveSendTimeoutException) {
          failInteractive(message.sessionId, "Interactive request could not be sent")
       } catch (e: CancellationException) {
          throw e
@@ -257,3 +255,5 @@ private fun <K, V> mapOfNotNull(vararg pairs: Pair<K, V>?): Map<K, V> =
    pairs.filterNotNull().toMap()
 
 private const val INTERACTIVE_SEND_TIMEOUT = 5_000L
+
+private class InteractiveSendTimeoutException : Exception()

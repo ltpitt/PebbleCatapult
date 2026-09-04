@@ -73,6 +73,22 @@ static void interactive_unload(Window* window)
 static void interactive_send(uint32_t packet, const char* id, const char* value);
 static void interactive_send_error(uint32_t session, const char* reason);
 
+static bool interactive_uint_tuple_width(const Tuple* tuple, uint16_t width)
+{
+    return tuple && tuple->type == TUPLE_UINT && tuple->length == width;
+}
+
+static void interactive_clear_window()
+{
+    if (interactive_window) window_stack_pop(false);
+    interactive_session = 0;
+    interactive_packet = 0;
+    interactive_count = 0;
+    interactive_total = 0;
+    interactive_confirmation = false;
+    for (uint8_t i = 0; i < 32; i++) interactive_received[i] = false;
+}
+
 void packets_init()
 {
     bluetooth_register_reconnect_callback(send_watch_welcome);
@@ -180,17 +196,17 @@ static void show_interactive(const DictionaryIterator* received)
         Tuple* session = dict_find(received, 1);
         Tuple* title = dict_find(received, 2);
         const uint32_t error_session =
-            session && session->type == TUPLE_UINT ? session->value->uint32 : interactive_session;
-        if (!packet || packet->type != TUPLE_UINT || !session || session->type != TUPLE_UINT) {
+            interactive_uint_tuple_width(session, 4) ? session->value->uint32 : interactive_session;
+        if (!interactive_uint_tuple_width(packet, 4) || !interactive_uint_tuple_width(session, 4)) {
             interactive_send_error(error_session, "Missing interactive metadata");
             return;
         }
         Tuple* sequence = dict_find(received, 3);
         Tuple* total = dict_find(received, 4);
         Tuple* terminal = dict_find(received, 5);
-        if (!sequence || sequence->type != TUPLE_UINT ||
-            !total || total->type != TUPLE_UINT ||
-            !terminal || terminal->type != TUPLE_UINT) {
+        if (!interactive_uint_tuple_width(sequence, 4) ||
+            !interactive_uint_tuple_width(total, 2) ||
+            !interactive_uint_tuple_width(terminal, 1)) {
             interactive_send_error(error_session, "Invalid interactive metadata");
             return;
         }
@@ -219,7 +235,8 @@ static void show_interactive(const DictionaryIterator* received)
                 interactive_send_error(incoming_session, "Invalid cancellation reason");
                 return;
             }
-            interactive_send(10, NULL, NULL);
+            interactive_clear_window();
+            interactive_send_error(incoming_session, NULL);
             return;
         }
         if (interactive_packet != 5 && interactive_packet != 6) {
