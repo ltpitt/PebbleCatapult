@@ -38,6 +38,24 @@ You can input text into tasks via watch's microphone
 #### Timeline pin creation
 "Launch" timeline pins from Tasker onto the watch
 
+#### Interactive Tasker sessions
+Show a list or a confirmation dialog on the watch and let Tasker act on the
+answer. Only one interactive session can be active at a time; starting a new
+one cancels any previous one.
+
+The action's result is returned to Tasker as these variables:
+
+| Variable | Meaning |
+| --- | --- |
+| `%catapult_status` | `success`, `failed`, `cancelled`, or `timeout` |
+| `%catapult_result_id` | Selected item's ID (list selection only) |
+| `%catapult_result_value` | Selected item's value (list selection only) |
+
+Example: an "Ask for a location" task supplies a CSV of saved locations as a
+list, the user picks one on the watch, and a follow-up "If `%catapult_status`
+~ `success`" task opens Google Maps with
+`geo:0,0?q=%catapult_result_value(%catapult_result_id)`.
+
 # Contributing
 
 See [CONTRIBUTING](CONTRIBUTING.MD)

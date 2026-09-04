@@ -24,11 +24,6 @@ void window_interactive_list_dismiss(void)
     if (active) window_stack_pop(false);
 }
 
-static void report_error(InteractiveList* list, const char* reason)
-{
-    if (list->error) list->error(list->session, reason, list->context);
-}
-
 static uint16_t rows(MenuLayer* menu, uint16_t section, void* context)
 {
     return ((InteractiveList*)context)->count;

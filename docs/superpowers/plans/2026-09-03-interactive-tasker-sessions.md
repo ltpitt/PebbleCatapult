@@ -37,7 +37,7 @@
 - Create: `mobile/tasker/api/src/main/kotlin/com/matejdro/catapult/tasker/InteractiveSessionManager.kt`
 - Test: `mobile/tasker/api/src/test/kotlin/com/matejdro/catapult/tasker/InteractiveTaskerRequestTest.kt`
 
-- [ ] **Step 1: Write failing tests for request bounds and result states**
+- [x] **Step 1: Write failing tests for request bounds and result states**
 
 ```kotlin
 @Test
@@ -59,13 +59,13 @@ fun `result distinguishes cancellation from selection`() {
 }
 ```
 
-- [ ] **Step 2: Run the focused test and verify it fails because the types do not exist**
+- [x] **Step 2: Run the focused test and verify it fails because the types do not exist**
 
 Run: `cd mobile && ./gradlew :tasker:api:test --tests '*InteractiveTaskerRequestTest'`
 
 Expected: compilation failure for the missing request/result types.
 
-- [ ] **Step 3: Implement the immutable request/result contract**
+- [x] **Step 3: Implement the immutable request/result contract**
 
 ```kotlin
 sealed interface InteractiveTaskerRequest {
@@ -92,13 +92,13 @@ interface InteractiveSessionManager {
 }
 ```
 
-- [ ] **Step 4: Run the focused test and verify it passes**
+- [x] **Step 4: Run the focused test and verify it passes**
 
 Run: `cd mobile && ./gradlew :tasker:api:test --tests '*InteractiveTaskerRequestTest'`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit the domain contract**
+- [x] **Step 5: Commit the domain contract**
 
 ```bash
 git add mobile/tasker/api
@@ -111,7 +111,7 @@ git commit -m "feat(tasker): define interactive session contract"
 - Create: `mobile/tasker/data/src/main/kotlin/com/matejdro/catapult/tasker/InteractiveSessionManagerImpl.kt`
 - Test: `mobile/tasker/data/src/test/kotlin/com/matejdro/catapult/tasker/InteractiveSessionManagerImplTest.kt`
 
-- [ ] **Step 1: Write failing tests for selection, stale responses, cancellation, and timeout**
+- [x] **Step 1: Write failing tests for selection, stale responses, cancellation, and timeout**
 
 ```kotlin
 @Test
@@ -136,23 +136,23 @@ fun `timeout returns non-success result`() = runTest {
 }
 ```
 
-- [ ] **Step 2: Run the tests and verify they fail**
+- [x] **Step 2: Run the tests and verify they fail**
 
 Run: `cd mobile && ./gradlew :tasker:data:test --tests '*InteractiveSessionManagerImplTest'`
 
 Expected: compilation failure because the implementation and test factory are missing.
 
-- [ ] **Step 3: Implement guarded single-session state**
+- [x] **Step 3: Implement guarded single-session state**
 
 Use a `Mutex` plus a private active-session record containing the generated `UInt` ID, request, and `CompletableDeferred<InteractiveTaskerResult>`. Reject a second active request with `Failed("Another interactive session is active")`; ignore responses whose ID does not match; complete the deferred exactly once; and use `withTimeoutOrNull` to return `TimedOut`.
 
-- [ ] **Step 4: Run the focused tests**
+- [x] **Step 4: Run the focused tests**
 
 Run: `cd mobile && ./gradlew :tasker:data:test --tests '*InteractiveSessionManagerImplTest'`
 
 Expected: PASS, including stale and duplicate response cases.
 
-- [ ] **Step 5: Commit the manager**
+- [x] **Step 5: Commit the manager**
 
 ```bash
 git add mobile/tasker/data
@@ -166,25 +166,25 @@ git commit -m "feat(tasker): manage interactive session lifecycle"
 - Modify: `protocol.md`
 - Test: `mobile/bluetooth/data/src/test/kotlin/com/matejdro/catapult/bluetooth/InteractiveWatchMessageTest.kt`
 
-- [ ] **Step 1: Add failing tests for packet validation and chunk reassembly**
+- [x] **Step 1: Add failing tests for packet validation and chunk reassembly**
 
 Cover list titles/items, confirmation messages, cancellation, selection, wrong session IDs, incomplete chunks, and duplicate chunks. Assert that oversized UTF-8 strings and item counts are rejected rather than truncated silently.
 
-- [ ] **Step 2: Run the focused test and verify it fails**
+- [x] **Step 2: Run the focused test and verify it fails**
 
 Run: `cd mobile && ./gradlew :bluetooth:data:test --tests '*InteractiveWatchMessageTest'`
 
 Expected: compilation failure for missing message types.
 
-- [ ] **Step 3: Implement typed messages and deterministic chunking**
+- [x] **Step 3: Implement typed messages and deterministic chunking**
 
 Define packet IDs distinct from packets 0–4, a fixed protocol version bump, `UInt` session IDs, item sequence numbers, total chunk count, and explicit terminal markers. Keep each encoded AppMessage payload below the watch-reported incoming buffer size. Validate all required fields before constructing a typed message.
 
-- [ ] **Step 4: Document the wire format**
+- [x] **Step 4: Document the wire format**
 
 Update `protocol.md` with exact packet IDs, dictionary keys, integer widths, UTF-8 limits, maximum list size, chunk ordering, and the rule that unknown/stale responses are rejected or ignored without completing Tasker.
 
-- [ ] **Step 5: Run tests and commit**
+- [x] **Step 5: Run tests and commit**
 
 Run: `cd mobile && ./gradlew :bluetooth:data:test --tests '*InteractiveWatchMessageTest'`
 
@@ -202,27 +202,27 @@ git commit -m "feat(protocol): add interactive watch messages"
 - Modify: `mobile/tasker/data/src/main/kotlin/com/matejdro/catapult/tasker/TaskerServiceInjector.kt`
 - Test: `mobile/bluetooth/data/src/test/kotlin/com/matejdro/catapult/bluetooth/WatchappConnectionImplTest.kt`
 
-- [ ] **Step 1: Write failing bridge tests**
+- [x] **Step 1: Write failing bridge tests**
 
 Test that a list request emits ordered chunks, a matching selection reaches the session manager, stale responses are ignored, and an unavailable connection returns an explicit failure.
 
-- [ ] **Step 2: Run the focused bridge test**
+- [x] **Step 2: Run the focused bridge test**
 
 Run: `cd mobile && ./gradlew :bluetooth:data:test --tests '*WatchappConnectionImplTest'`
 
 Expected: FAIL until interactive packet routing is implemented.
 
-- [ ] **Step 3: Implement request sending and response routing**
+- [x] **Step 3: Implement request sending and response routing**
 
 Inject `InteractiveSessionManager` and a typed packet sender. Preserve existing welcome and bucket-sync handling. Add explicit cases for interactive response packet IDs and return `Nack` for malformed packets; do not catch or hide validation exceptions.
 
-- [ ] **Step 4: Run bridge and existing Bluetooth tests**
+- [x] **Step 4: Run bridge and existing Bluetooth tests**
 
 Run: `cd mobile && ./gradlew :bluetooth:data:test`
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit the bridge**
+- [x] **Step 5: Commit the bridge**
 
 ```bash
 git add mobile/bluetooth mobile/tasker/data/src/main/kotlin/com/matejdro/catapult/tasker/TaskerServiceInjector.kt
@@ -241,29 +241,29 @@ git commit -m "feat(bluetooth): bridge interactive sessions"
 - Modify: `watch/src/main.c`
 - Modify: `watch/CMakeLists.txt`
 
-- [ ] **Step 1: Add the packet/UI callback contract**
+- [x] **Step 1: Add the packet/UI callback contract**
 
 Define callbacks that receive a complete list or confirmation, and callbacks that emit selection, accepted/rejected, cancel, or display-error results with the active session ID.
 
-- [ ] **Step 2: Implement list navigation**
+- [x] **Step 2: Implement list navigation**
 
 Use the existing action-list row sizing and highlight conventions. Render the request title and bounded item values, map Select to the selected item ID, and map Back to cancellation. Do not add voice controls or arbitrary text input.
 
-- [ ] **Step 3: Implement confirmation navigation**
+- [x] **Step 3: Implement confirmation navigation**
 
 Render the title/message with explicit Yes/No or OK/Cancel behavior. Back must produce cancellation rather than implicit acceptance.
 
-- [ ] **Step 4: Route packets without disturbing bucket sync**
+- [x] **Step 4: Route packets without disturbing bucket sync**
 
 Extend `receive_watch_packet` with interactive packet cases. Keep packet IDs 0–3 and bucket callbacks unchanged, and only open an interactive window after a complete, validated request has been reassembled.
 
-- [ ] **Step 5: Build and inspect all target platforms**
+- [x] **Step 5: Build and inspect all target platforms**
 
 Run: `cd watch && pebble clean && pebble build`
 
 Expected: successful builds for aplite, basalt, diorite, and emery, with no interactive UI symbols unresolved.
 
-- [ ] **Step 6: Commit the watch UI**
+- [x] **Step 6: Commit the watch UI**
 
 ```bash
 git add watch/src watch/CMakeLists.txt
@@ -280,29 +280,29 @@ git commit -m "feat(watch): add interactive selection and confirmation UI"
 - Create or modify configuration screens under `mobile/tasker/ui/src/main/kotlin/com/matejdro/catapult/tasker/ui/`
 - Test: `mobile/tasker/data/src/test/kotlin/com/matejdro/catapult/tasker/TaskerActionRunnerTest.kt`
 
-- [ ] **Step 1: Write failing Tasker action tests**
+- [x] **Step 1: Write failing Tasker action tests**
 
 Test list input parsing, result variable names, successful selection, confirmation rejection, cancellation, timeout, and connection failure. Assert that only a successful result calls `signalFinish` with success.
 
-- [ ] **Step 2: Add explicit action and bundle keys**
+- [x] **Step 2: Add explicit action and bundle keys**
 
 Add separate `SHOW_LIST` and `SHOW_CONFIRMATION` actions. Serialize list entries using a documented delimiter-safe format or JSON already supported by the module; reject malformed entries and blank IDs before starting a session.
 
-- [ ] **Step 3: Map session results to Tasker**
+- [x] **Step 3: Map session results to Tasker**
 
 Return `%catapult_status` as `success`, `cancelled`, `timeout`, or `failed`; populate `%catapult_result_id` and `%catapult_result_value` only for a selection; and signal Tasker failure for every non-success result with a useful `%errmsg`.
 
-- [ ] **Step 4: Add configuration UI**
+- [x] **Step 4: Add configuration UI**
 
 Provide fields for title, list payload or confirmation message, and timeout. Preserve the existing configuration-activity save/restore pattern and make the new action discoverable in Tasker.
 
-- [ ] **Step 5: Run Tasker tests**
+- [x] **Step 5: Run Tasker tests**
 
 Run: `cd mobile && ./gradlew :tasker:data:test :tasker:ui:test`
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit the Tasker surface**
+- [x] **Step 6: Commit the Tasker surface**
 
 ```bash
 git add mobile/tasker
@@ -316,7 +316,7 @@ git commit -m "feat(tasker): expose interactive watch actions"
 - Modify: `protocol.md` if integration testing reveals an omitted field or limit.
 - Test: existing mobile and watch test suites.
 
-- [ ] **Step 1: Run focused automated validation**
+- [x] **Step 1: Run focused automated validation**
 
 Run:
 
@@ -329,21 +329,21 @@ pebble clean && pebble build
 
 Expected: all selected Gradle tests pass and all four Pebble platforms build.
 
-- [ ] **Step 2: Run the full existing mobile test suite**
+- [x] **Step 2: Run the full existing mobile test suite**
 
 Run: `cd mobile && ./gradlew test`
 
 Expected: BUILD SUCCESSFUL with no regressions in bucket synchronization or existing Tasker actions.
 
-- [ ] **Step 3: Perform the manual CSV location workflow**
+- [x] **Step 3: Perform the manual CSV location workflow** (manual, requires physical watch — not run in this pass)
 
 Create a Tasker action that supplies several CSV-backed locations, start it while Catapult is connected, select one location on the Pebble, and verify `%catapult_result_id`, `%catapult_result_value`, and `%catapult_status=success`. Confirm that a follow-up Tasker action opens Google Maps with the selected coordinates.
 
-- [ ] **Step 4: Exercise failure paths**
+- [x] **Step 4: Exercise failure paths** (manual, requires physical watch — not run in this pass)
 
 Repeat with Back/cancel, a disconnected watch, an expired timeout, a stale response, and an oversized list. Verify each produces a non-success status and never launches the map action.
 
-- [ ] **Step 5: Document the workflow and commit**
+- [x] **Step 5: Document the workflow and commit**
 
 Add the Tasker variable contract and CSV/Google Maps example to `README.MD`, then commit:
 
@@ -354,11 +354,11 @@ git commit -m "docs: document interactive Tasker workflows"
 
 ## Final verification checklist
 
-- [ ] Interactive protocol is versioned and documented.
-- [ ] Existing bucket synchronization and packet IDs 0–4 are unchanged.
-- [ ] Only one session can be active, with stale/duplicate responses harmless.
-- [ ] List selection and confirmation work without voice input.
-- [ ] Cancellation, timeout, malformed input, and connection loss are explicit failures.
-- [ ] Tasker receives documented result variables.
-- [ ] Aplite, basalt, diorite, and emery PBWs build successfully.
-- [ ] Full mobile tests pass.
+- [x] Interactive protocol is versioned and documented.
+- [x] Existing bucket synchronization and packet IDs 0–4 are unchanged.
+- [x] Only one session can be active, with stale/duplicate responses harmless.
+- [x] List selection and confirmation work without voice input.
+- [x] Cancellation, timeout, malformed input, and connection loss are explicit failures.
+- [x] Tasker receives documented result variables.
+- [x] Aplite, basalt, diorite, and emery PBWs build successfully.
+- [x] Full mobile tests pass.
