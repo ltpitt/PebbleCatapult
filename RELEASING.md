@@ -3,6 +3,23 @@
 Catapult releases produce both the Android APK and Pebble watchapp PBW from
 the same release workflow.
 
+## Quick debug build (for trying changes on a phone)
+
+If you just want an installable APK to sideload and test, without waiting for
+the full test/lint/screenshot-test/watchapp/versioning pipeline, use the
+`quick-build` workflow in `.github/workflows/quick-build.yaml`:
+
+1. Open **Actions → quick-build → Run workflow**, pick your branch, and start
+   it.
+2. It only runs `:app:assembleDebug` — no tests, no lint, no watchapp build,
+   no versioning, no GitHub Release.
+3. Download the APK from the run's **Artifacts** section
+   (`catapult-mobile-debug-apk`) and sideload it.
+
+This build is signed with the debug key and is never published as a GitHub
+Release. Use the full `develop-build` workflow below for anything you intend
+to actually release.
+
 ## Automated release
 
 The canonical process is the `develop-build` workflow in
