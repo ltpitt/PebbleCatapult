@@ -8,6 +8,7 @@ class TaskerResultMappingTest {
    fun `notification success maps success status`() {
       InteractiveTaskerResult.Success.toTaskerBundle().getString("%catapult_status") shouldBe "success"
    }
+
    @Test
    fun `selection maps result variables and success status`() {
       val bundle = InteractiveTaskerResult.Selection("home", "Home").toTaskerBundle()

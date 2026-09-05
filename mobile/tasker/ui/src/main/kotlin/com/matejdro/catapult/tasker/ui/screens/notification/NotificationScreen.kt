@@ -50,7 +50,8 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
          mutableStateOf(
             activity.existingData.getString(BundleKeys.NOTIFICATION_VIBRATION)
                ?.replaceFirstChar { it.uppercase() }
-               ?.takeIf { it in vibrationOptions } ?: "Short"
+               ?.takeIf { it in vibrationOptions }
+               ?: "Short"
          )
       }
       var duration by remember {
@@ -83,14 +84,14 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
          vibration = vibration,
          duration = duration,
          error = error,
-         setTitle = {
-            title = it
+         setTitle = { newTitle ->
+            title = newTitle
             error = validateNotification(title, duration)
          },
          setBody = { body = it },
          setVibration = { vibration = it },
-         setDuration = {
-            duration = it
+         setDuration = { newDuration ->
+            duration = newDuration
             error = validateNotification(title, duration)
          },
          save = ::save,

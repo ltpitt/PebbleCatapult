@@ -31,18 +31,20 @@ sealed interface InteractiveTaskerRequest {
 }
 
 object InteractiveTaskerItems {
+   private const val INVALID_ITEMS_MESSAGE =
+      "Items must be a JSON array of objects with non-blank id and value"
+
    fun encode(items: List<InteractiveTaskerRequest.Item>): String =
       Json.encodeToString(items)
 
-   fun decode(serialized: String): List<InteractiveTaskerRequest.Item> {
+   fun decode(serialized: String): List<InteractiveTaskerRequest.Item> =
       try {
-         return Json.decodeFromString<List<InteractiveTaskerRequest.Item>>(serialized).also { items ->
-            if (items.isEmpty() || items.any { it.id.isBlank() }) throw IllegalArgumentException()
+         Json.decodeFromString<List<InteractiveTaskerRequest.Item>>(serialized).also { items ->
+            require(items.isNotEmpty() && items.none { it.id.isBlank() }) {
+               INVALID_ITEMS_MESSAGE
+            }
          }
-      } catch (exception: Exception) {
-         throw TaskerInvalidInputException(
-            "Items must be a JSON array of objects with non-blank id and value",
-         )
+      } catch (ignoredException: Exception) {
+         throw TaskerInvalidInputException(INVALID_ITEMS_MESSAGE)
       }
-   }
 }

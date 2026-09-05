@@ -38,11 +38,23 @@ class TaskerActionRunner(
       val action = enumValueOf<TaskerAction>(actionName)
 
       return when (action) {
-         TaskerAction.TOGGLE_ACTIONS -> runToggleAction(bundle).let { null }
+         TaskerAction.TOGGLE_ACTIONS -> {
+            runToggleAction(bundle)
+            null
+         }
 
-         TaskerAction.SYNC_NOW -> runSyncAction(bundle).let { null }
-         TaskerAction.CREATE_PIN -> runCreatePin(bundle).let { null }
-         TaskerAction.DELETE_PIN -> runDeletePin(bundle).let { null }
+         TaskerAction.SYNC_NOW -> {
+            runSyncAction(bundle)
+            null
+         }
+         TaskerAction.CREATE_PIN -> {
+            runCreatePin(bundle)
+            null
+         }
+         TaskerAction.DELETE_PIN -> {
+            runDeletePin(bundle)
+            null
+         }
          TaskerAction.SHOW_LIST -> runInteractiveList(bundle)
          TaskerAction.SHOW_CONFIRMATION -> runInteractiveConfirmation(bundle)
          TaskerAction.SEND_NOTIFICATION -> runNotification(bundle)
@@ -66,28 +78,40 @@ class TaskerActionRunner(
    }
 
    private fun timeout(bundle: Bundle) =
-      bundle.getLong(BundleKeys.TIMEOUT_MS, 60_000L).coerceAtLeast(1L).milliseconds
+      bundle.getLong(BundleKeys.TIMEOUT_MS, DEFAULT_INTERACTIVE_TIMEOUT_MS)
+         .coerceAtLeast(MINIMUM_INTERACTIVE_TIMEOUT_MS)
+         .milliseconds
 
    private suspend fun runNotification(bundle: Bundle): InteractiveTaskerResult {
       val request = NotificationRequest.fromBundle(bundle)
-      if (request.title.isBlank()) throw TaskerInvalidInputException("Title is mandatory")
-      if (request.title.toByteArray(Charsets.UTF_8).size > 64) throw TaskerInvalidInputException("Title is too long")
-      if (request.body.toByteArray(Charsets.UTF_8).size > 128) throw TaskerInvalidInputException("Body is too long")
-      if (request.durationMs !in 0..300_000) throw TaskerInvalidInputException("Duration is out of range")
+      validateNotification(request)
       try {
          interactiveSessionManager.sendNotification(
-            request.title,
-            request.body,
-            request.vibration.ordinal,
-            request.durationMs,
+            title = request.title,
+            body = request.body,
+            vibration = request.vibration.ordinal,
+            durationMs = request.durationMs,
             startWatchapp = { sender.startAppOnTheWatch(WATCHAPP_UUID) },
          )
-      } catch (e: TaskerInvalidInputException) {
-         throw e
       } catch (e: IllegalArgumentException) {
-         throw TaskerInvalidInputException(e.message ?: "Invalid notification")
+         throw TaskerInvalidInputException(e.message ?: INVALID_NOTIFICATION_MESSAGE).apply {
+            initCause(e)
+         }
       }
       return InteractiveTaskerResult.Success
+   }
+
+   private fun validateNotification(request: NotificationRequest) {
+      require(request.title.isNotBlank()) { "Title is mandatory" }
+      require(request.title.toByteArray(Charsets.UTF_8).size <= MAX_NOTIFICATION_TITLE_SIZE_BYTES) {
+         "Title is too long"
+      }
+      require(request.body.toByteArray(Charsets.UTF_8).size <= MAX_NOTIFICATION_BODY_SIZE_BYTES) {
+         "Body is too long"
+      }
+      require(request.durationMs in MINIMUM_NOTIFICATION_DURATION_MS..MAXIMUM_NOTIFICATION_DURATION_MS) {
+         "Duration is out of range"
+      }
    }
 
    private suspend fun runToggleAction(bundle: Bundle) {
@@ -243,3 +267,11 @@ class TaskerActionRunner(
       }
    }
 }
+
+private const val DEFAULT_INTERACTIVE_TIMEOUT_MS = 60_000L
+private const val MINIMUM_INTERACTIVE_TIMEOUT_MS = 1L
+private const val MAX_NOTIFICATION_TITLE_SIZE_BYTES = 64
+private const val MAX_NOTIFICATION_BODY_SIZE_BYTES = 128
+private const val MINIMUM_NOTIFICATION_DURATION_MS = 0L
+private const val MAXIMUM_NOTIFICATION_DURATION_MS = 300_000L
+private const val INVALID_NOTIFICATION_MESSAGE = "Invalid notification"

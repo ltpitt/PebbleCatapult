@@ -14,9 +14,9 @@ class InteractiveTaskerRequestTest {
 
    @Test
    fun `rejects malformed list item JSON and blank IDs`() {
-      listOf("", "not json", "[{}]", """[{"id":" ","value":"x"}]""").forEach {
+      listOf("", "not json", "[{}]", """[{"id":" ","value":"x"}]""").forEach { serializedItems ->
          org.junit.jupiter.api.assertThrows<TaskerInvalidInputException> {
-            InteractiveTaskerItems.decode(it)
+            InteractiveTaskerItems.decode(serializedItems)
          }
       }
    }
@@ -49,11 +49,10 @@ class InteractiveTaskerRequestTest {
          "Choose an item",
          listOf(InteractiveTaskerRequest.Item("first", "First item")),
       )
-
-      val mutableItems = request.items as MutableList<InteractiveTaskerRequest.Item>
+      val javaItems = request.items as java.util.List<InteractiveTaskerRequest.Item>
 
       org.junit.jupiter.api.assertThrows<UnsupportedOperationException> {
-         mutableItems.add(InteractiveTaskerRequest.Item("second", "Second item"))
+         javaItems.add(InteractiveTaskerRequest.Item("second", "Second item"))
       }
    }
 

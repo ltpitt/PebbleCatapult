@@ -15,9 +15,11 @@ class InteractiveSessionManagerImplTest {
    fun `await result sends request through registered bridge`() = runTest {
       val manager = newManager()
       var sent: Pair<UInt, InteractiveTaskerRequest>? = null
-      manager.registerSender(InteractiveRequestSender { sessionId, request ->
-         sent = sessionId to request
-      })
+      manager.registerSender(
+         InteractiveRequestSender { sessionId, request ->
+            sent = sessionId to request
+         },
+      )
       val request = InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?")
       val result = async { manager.awaitResult(request) }
       runCurrent()
@@ -213,12 +215,15 @@ class InteractiveSessionManagerImplTest {
    fun `caller cancellation clears active session for a later request`() = runTest {
       val manager = newManager()
       var cancelSent: Pair<UInt, String>? = null
-      manager.registerSender("default", object : InteractiveRequestSender {
-         override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) = Unit
-         override suspend fun cancel(sessionId: UInt, reason: String) {
-            cancelSent = sessionId to reason
-         }
-      })
+      manager.registerSender(
+         "default",
+         object : InteractiveRequestSender {
+            override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) = Unit
+            override suspend fun cancel(sessionId: UInt, reason: String) {
+               cancelSent = sessionId to reason
+            }
+         },
+      )
       val cancelled = async {
          manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
       }
@@ -304,10 +309,10 @@ class InteractiveSessionManagerImplTest {
       val sentTo = mutableListOf<String>()
       val sender = { watch: String ->
          object : InteractiveRequestSender {
-           override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) = Unit
-           override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
-              sentTo += watch
-           }
+            override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) = Unit
+            override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+               sentTo += watch
+            }
          }
       }
 

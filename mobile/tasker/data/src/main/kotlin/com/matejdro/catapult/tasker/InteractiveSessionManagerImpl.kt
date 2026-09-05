@@ -7,12 +7,15 @@ import dev.zacsweers.metro.binding
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import logcat.logcat
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
@@ -55,6 +58,7 @@ class InteractiveSessionManagerImpl(
             ?: return InteractiveTaskerResult.Failed("Watch connection is unavailable")
          ActiveSession(nextSessionId++, entry.key, entry.value, request, CompletableDeferred()).also { activeSession = it }
       }
+      val coroutineContext = currentCoroutineContext()
 
       try {
          try {
@@ -64,17 +68,18 @@ class InteractiveSessionManagerImpl(
          } catch (e: Exception) {
             return InteractiveTaskerResult.Failed(e.message ?: "Failed to send interactive request")
          }
-         return withTimeoutOrNull(timeout) { session.result.await() }
-            ?: InteractiveTaskerResult.TimedOut("Interactive session timed out").also {
-               runCatching { session.sender.cancel(session.id, "Interactive session timed out") }
-            }
-      } catch (e: CancellationException) {
-         withContext(NonCancellable) {
-            runCatching { session.sender.cancel(session.id, "Interactive session cancelled") }
+         val result = withTimeoutOrNull(timeout) { session.result.await() }
+         if (result != null) {
+            return result
          }
-         throw e
+
+         cancelSessionIgnoringFailures(session, INTERACTIVE_SESSION_TIMED_OUT_REASON)
+         return InteractiveTaskerResult.TimedOut(INTERACTIVE_SESSION_TIMED_OUT_REASON)
       } finally {
          withContext(NonCancellable) {
+            if (!coroutineContext.isActive) {
+               cancelSessionIgnoringFailures(session, INTERACTIVE_SESSION_CANCELLED_REASON)
+            }
             mutex.withLock { if (activeSession?.id == session.id) activeSession = null }
          }
       }
@@ -102,15 +107,13 @@ class InteractiveSessionManagerImpl(
       startWatchapp: (suspend () -> Unit)?,
    ) {
       val session = mutex.withLock {
-         activeSession?.also {
+         activeSession?.also { activeSessionEntry ->
             activeSession = null
-            it.result.complete(InteractiveTaskerResult.Cancelled("Interactive session replaced by notification"))
+            activeSessionEntry.result.complete(InteractiveTaskerResult.Cancelled(INTERACTIVE_SESSION_REPLACED_REASON))
          }
       }
       if (session != null) {
-         runCatching {
-            session.sender.cancel(session.id, "Interactive session replaced by notification")
-         }
+         cancelSessionIgnoringFailures(session, INTERACTIVE_SESSION_REPLACED_REASON)
       }
       // Notifications have no watch selector, so use the connected watch with the lowest ID.
       // Sorting avoids depending on connection/map insertion order when multiple watches are connected.
@@ -134,33 +137,57 @@ class InteractiveSessionManagerImpl(
 
    override suspend fun cancelActive(watchId: String, reason: String) {
       val session = mutex.withLock {
-         activeSession?.takeIf { it.watch == watchId }?.also {
-            activeSession = null
-            it.result.complete(InteractiveTaskerResult.Cancelled(reason))
-         }
+         activeSession
+            ?.takeIf { activeSessionEntry -> activeSessionEntry.watch == watchId }
+            ?.also { activeSessionEntry ->
+               activeSession = null
+               activeSessionEntry.result.complete(InteractiveTaskerResult.Cancelled(reason))
+            }
       }
-      if (session != null) runCatching { session.sender.cancel(session.id, reason) }
+      if (session != null) {
+         cancelSessionIgnoringFailures(session, reason)
+      }
    }
 
    override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) {
       mutex.withLock {
-         activeSession?.takeIf { it.watch == watchId }?.takeIf { it.id == sessionId }?.takeIf { it.accepts(result) }?.let {
-            it.result.complete(result)
-            activeSession = null
-         }
+         activeSession
+            ?.takeIf { activeSessionEntry -> activeSessionEntry.watch == watchId }
+            ?.takeIf { activeSessionEntry -> activeSessionEntry.id == sessionId }
+            ?.takeIf { activeSessionEntry -> activeSessionEntry.accepts(result) }
+            ?.let { activeSessionEntry ->
+               activeSessionEntry.result.complete(result)
+               activeSession = null
+            }
       }
    }
 
    private fun ActiveSession.accepts(result: InteractiveTaskerResult) = when (request) {
       is InteractiveTaskerRequest.List ->
          result is InteractiveTaskerResult.Selection &&
-            request.items.any {
-               it.id == result.id && it.value == result.value
+            request.items.any { item ->
+               item.id == result.id && item.value == result.value
             }
       is InteractiveTaskerRequest.Confirmation ->
          result is InteractiveTaskerResult.Confirmation
    } || result is InteractiveTaskerResult.Cancelled || result is InteractiveTaskerResult.Failed
+
+   private suspend fun cancelSessionIgnoringFailures(session: ActiveSession, reason: String) {
+      try {
+         session.sender.cancel(session.id, reason)
+      } catch (exception: CancellationException) {
+         throw exception
+      } catch (exception: Exception) {
+         logcat {
+            "Failed to cancel interactive session ${session.id}: " +
+               (exception.message ?: exception::class.simpleName.orEmpty())
+         }
+      }
+   }
 }
 
+private const val INTERACTIVE_SESSION_TIMED_OUT_REASON = "Interactive session timed out"
+private const val INTERACTIVE_SESSION_CANCELLED_REASON = "Interactive session cancelled"
+private const val INTERACTIVE_SESSION_REPLACED_REASON = "Interactive session replaced by notification"
 private const val NOTIFICATION_CONNECTION_TIMEOUT_MS = 5_000L
 private const val NOTIFICATION_CONNECTION_POLL_INTERVAL_MS = 50L

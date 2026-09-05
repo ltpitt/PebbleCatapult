@@ -17,9 +17,8 @@ import io.rebble.pebblekit2.common.model.TimelineLayoutType
 import io.rebble.pebblekit2.common.model.TimelinePin
 import io.rebble.pebblekit2.common.model.WatchIdentifier
 import io.rebble.pebblekit2.model.Watchapp
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
@@ -91,9 +90,11 @@ class TaskerActionRunnerTest {
    fun `Notification duration defaults to 5000 ms and preserves explicit zero`() = scope.runTest {
       NotificationRequest.fromBundle(Bundle()).durationMs shouldBe 5_000
 
-      NotificationRequest.fromBundle(Bundle().apply {
-         putLong(BundleKeys.NOTIFICATION_DURATION_MS, 0)
-      }).durationMs shouldBe 0
+      NotificationRequest.fromBundle(
+         Bundle().apply {
+            putLong(BundleKeys.NOTIFICATION_DURATION_MS, 0)
+         },
+      ).durationMs shouldBe 0
    }
 
    @Test
@@ -102,10 +103,12 @@ class TaskerActionRunnerTest {
       interactiveManager.notificationFailure = failure
 
       shouldThrow<IllegalStateException> {
-         runner.run(Bundle().apply {
-            putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
-            putString(BundleKeys.TITLE, "Door")
-         })
+         runner.run(
+            Bundle().apply {
+               putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
+               putString(BundleKeys.TITLE, "Door")
+            },
+         )
       }.shouldBeSameInstanceAs(failure)
    }
 
@@ -115,10 +118,12 @@ class TaskerActionRunnerTest {
       interactiveManager.notificationFailure = cancellation
 
       shouldThrow<CancellationException> {
-         runner.run(Bundle().apply {
-            putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
-            putString(BundleKeys.TITLE, "Door")
-         })
+         runner.run(
+            Bundle().apply {
+               putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
+               putString(BundleKeys.TITLE, "Door")
+            },
+         )
       }.shouldBeSameInstanceAs(cancellation)
    }
 
@@ -146,11 +151,13 @@ class TaskerActionRunnerTest {
 
    @Test
    fun `Run interactive confirmation through session manager`() = scope.runTest {
-      runner.run(Bundle().apply {
-         putString(BundleKeys.ACTION, TaskerAction.SHOW_CONFIRMATION.name)
-         putString(BundleKeys.TITLE, "Confirm")
-         putString(BundleKeys.MESSAGE, "Proceed?")
-      })
+      runner.run(
+         Bundle().apply {
+            putString(BundleKeys.ACTION, TaskerAction.SHOW_CONFIRMATION.name)
+            putString(BundleKeys.TITLE, "Confirm")
+            putString(BundleKeys.MESSAGE, "Proceed?")
+         },
+      )
 
       interactiveManager.requests.single() shouldBe
          InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?")
@@ -158,16 +165,18 @@ class TaskerActionRunnerTest {
 
    @Test
    fun `Run interactive list from JSON`() = scope.runTest {
-      runner.run(Bundle().apply {
-         putString(BundleKeys.ACTION, TaskerAction.SHOW_LIST.name)
-         putString(BundleKeys.TITLE, "Choose")
-         putString(
-            BundleKeys.ITEMS,
-            InteractiveTaskerItems.encode(
-               listOf(InteractiveTaskerRequest.Item("a=b", "Line 1\nLine 2"))
+      runner.run(
+         Bundle().apply {
+            putString(BundleKeys.ACTION, TaskerAction.SHOW_LIST.name)
+            putString(BundleKeys.TITLE, "Choose")
+            putString(
+               BundleKeys.ITEMS,
+               InteractiveTaskerItems.encode(
+                  listOf(InteractiveTaskerRequest.Item("a=b", "Line 1\nLine 2")),
+               ),
             )
-         )
-      })
+         },
+      )
 
       interactiveManager.requests.single() shouldBe InteractiveTaskerRequest.List(
          "Choose",
@@ -178,11 +187,13 @@ class TaskerActionRunnerTest {
    @Test
    fun `Reject malformed interactive list`() = scope.runTest {
       shouldThrow<TaskerInvalidInputException> {
-         runner.run(Bundle().apply {
-            putString(BundleKeys.ACTION, TaskerAction.SHOW_LIST.name)
-            putString(BundleKeys.TITLE, "Choose")
-            putString(BundleKeys.ITEMS, """[{"id":"","value":"value"}]""")
-         })
+         runner.run(
+            Bundle().apply {
+               putString(BundleKeys.ACTION, TaskerAction.SHOW_LIST.name)
+               putString(BundleKeys.TITLE, "Choose")
+               putString(BundleKeys.ITEMS, """[{"id":"","value":"value"}]""")
+            },
+         )
       }
    }
 

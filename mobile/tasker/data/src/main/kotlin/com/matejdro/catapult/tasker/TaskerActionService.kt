@@ -60,19 +60,24 @@ class TaskerActionService : Service() {
             logcat { "Run finished" }
 
             val taskerResult = result?.toTaskerBundle()
+            val resultCode =
+               if (result == null || result.isSuccess()) {
+                  TaskerPluginConstants.RESULT_CODE_OK
+               } else {
+                  TaskerPluginConstants.RESULT_CODE_FAILED
+               }
             TaskerPlugin.Setting.signalFinish(
                this@TaskerActionService,
                intent,
-               if (result == null || result.isSuccess()) TaskerPluginConstants.RESULT_CODE_OK
-               else TaskerPluginConstants.RESULT_CODE_FAILED,
-               taskerResult ?: Bundle()
+               resultCode,
+               taskerResult ?: Bundle(),
             )
          } catch (e: CancellationException) {
             TaskerPlugin.Setting.signalFinish(
                this@TaskerActionService,
                intent,
                TaskerPluginConstants.RESULT_CODE_FAILED,
-               failureBundle("Cancelled")
+               failureBundle("Cancelled"),
             )
             throw e
          } catch (e: Exception) {
@@ -81,7 +86,7 @@ class TaskerActionService : Service() {
                this@TaskerActionService,
                intent,
                TaskerPluginConstants.RESULT_CODE_FAILED,
-               failureBundle(e.message ?: e::class.simpleName ?: "Tasker action failed")
+               failureBundle(e.message ?: e::class.simpleName ?: "Tasker action failed"),
             )
          } finally {
             val leftTasks = runningTasks.decrementAndGet()
@@ -89,7 +94,6 @@ class TaskerActionService : Service() {
                logcat { "Stopping service" }
                stopSelf()
             }
-
          }
       }
 
@@ -117,7 +121,7 @@ class TaskerActionService : Service() {
          this,
          NotificationsKeys.NOTIFICATION_ID_TASKER_SERVICE,
          notification,
-         FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+         FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
       )
    }
 }
@@ -129,14 +133,17 @@ private fun failureBundle(message: String) = Bundle().apply {
 }
 
 internal fun InteractiveTaskerResult.toTaskerBundle() = Bundle().apply {
-   putString("%catapult_status", when (this@toTaskerBundle) {
-       InteractiveTaskerResult.Success -> "success"
-      is InteractiveTaskerResult.Selection -> "success"
-      is InteractiveTaskerResult.Confirmation -> if (accepted) "success" else "failed"
-      is InteractiveTaskerResult.Cancelled -> "cancelled"
-      is InteractiveTaskerResult.TimedOut -> "timeout"
-      is InteractiveTaskerResult.Failed -> "failed"
-   })
+   putString(
+      "%catapult_status",
+      when (this@toTaskerBundle) {
+         InteractiveTaskerResult.Success -> "success"
+         is InteractiveTaskerResult.Selection -> "success"
+         is InteractiveTaskerResult.Confirmation -> if (accepted) "success" else "failed"
+         is InteractiveTaskerResult.Cancelled -> "cancelled"
+         is InteractiveTaskerResult.TimedOut -> "timeout"
+         is InteractiveTaskerResult.Failed -> "failed"
+      },
+   )
    if (this@toTaskerBundle is InteractiveTaskerResult.Selection) {
       putString("%catapult_result_id", this@toTaskerBundle.id)
       putString("%catapult_result_value", this@toTaskerBundle.value)
@@ -153,7 +160,7 @@ internal fun InteractiveTaskerResult.isSuccess() =
       (this is InteractiveTaskerResult.Confirmation && accepted)
 
 internal fun InteractiveTaskerResult.reason() = when (this) {
-    InteractiveTaskerResult.Success -> "Success"
+   InteractiveTaskerResult.Success -> "Success"
    is InteractiveTaskerResult.Cancelled -> reason
    is InteractiveTaskerResult.TimedOut -> reason
    is InteractiveTaskerResult.Failed -> reason

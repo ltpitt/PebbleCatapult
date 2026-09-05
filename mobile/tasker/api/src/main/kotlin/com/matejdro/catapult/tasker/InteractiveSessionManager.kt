@@ -1,12 +1,10 @@
 package com.matejdro.catapult.tasker
 
-import kotlin.time.Duration.Companion.minutes
-
 interface InteractiveSessionManager {
    fun registerSender(sender: InteractiveRequestSender)
    fun registerSender(watchId: String, sender: InteractiveRequestSender) = registerSender(sender)
 
-   fun unregisterSender(watchId: String, sender: InteractiveRequestSender) = Unit
+   fun unregisterSender(watchId: String, sender: InteractiveRequestSender) {}
    fun unregisterSender(sender: InteractiveRequestSender) = unregisterSender("default", sender)
 
    suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult

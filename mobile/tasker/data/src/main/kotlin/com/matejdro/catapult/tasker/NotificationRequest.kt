@@ -27,9 +27,11 @@ data class NotificationRequest(
             title = bundle.getString(BundleKeys.TITLE).orEmpty(),
             body = bundle.getString(BundleKeys.MESSAGE).orEmpty(),
             vibration = vibration,
-            durationMs = bundle.getLong(BundleKeys.NOTIFICATION_DURATION_MS, 5_000L),
+            durationMs = bundle.getLong(BundleKeys.NOTIFICATION_DURATION_MS, DEFAULT_NOTIFICATION_DURATION_MS),
          )
          return request
       }
    }
 }
+
+private const val DEFAULT_NOTIFICATION_DURATION_MS = 5_000L
