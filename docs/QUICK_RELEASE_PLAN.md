@@ -1,8 +1,11 @@
 # Plan: quick debug builds published as a GitHub Release
 
-Status: **planned, not implemented yet**. This document describes the design
-before we touch `.github/workflows/quick-build.yaml`. Implement it as a
-separate, reviewable change once the approach below is agreed.
+Status: **planned, not implemented yet**. This document is written so it can
+be implemented mechanically, step by step, without needing to make design
+judgment calls — those calls are already made below. If you are implementing
+this: follow "Implementation steps" in order, use the exact YAML given, and
+run the exact verification commands at the end. Do not improvise field names,
+action versions, or file paths — copy them from this document.
 
 ## Problem
 
@@ -51,29 +54,165 @@ needed for the current use case (test on my phone right after pushing).
 
 ### Workflow changes (`.github/workflows/quick-build.yaml`)
 
-1. Trigger: keep `workflow_dispatch` (manual, any branch) as today.
-2. Build: unchanged — `:app:assembleDebug` only.
-3. New step after the build: create/update the `debug-latest` GitHub Release
-   via `ncipollo/release-action`, with:
-   - `tag: debug-latest`, `commit: ${{ github.sha }}`
-   - `prerelease: true`
-   - `allowUpdates: true`, `removeArtifacts: true` (replace the old APK)
-   - `name: "Quick debug build (${{ github.ref_name }} @ ${{ github.sha }})"`
-   - `body`: branch, commit SHA, run URL, and a one-line reminder that this is
-     a debug-signed, untested convenience build, not a release candidate.
-   - `artifacts: mobile/app/build/outputs/apk/debug/*.apk`
-4. Add an explicit `permissions: contents: write` block to the job (least
-   privilege) instead of relying on the repository-wide default token
-   permission. This also documents, in the workflow file itself, exactly why
-   this workflow needs write access.
-5. Still upload the workflow artifact too (cheap, keeps today's behavior for
-   anyone using the Actions UI directly).
+Everything about the existing workflow stays the same (trigger, build step,
+artifact upload). Only two things are added: a `permissions` block on the
+job, and one new step at the end. Use `ncipollo/release-action` pinned to
+the **exact same commit SHA already used in this repo**
+(`.github/workflows/develop.yaml` line ~262:
+`339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0`) — do not use a
+different version or the `@v1` floating tag.
+
+#### Implementation steps
+
+1. Open `.github/workflows/quick-build.yaml`.
+2. Add a `permissions:` block directly under `build-debug-apk:` (as a sibling
+   of `runs-on:`), so the job looks like:
+
+   ```yaml
+   jobs:
+     build-debug-apk:
+       runs-on: "ubuntu-latest"
+       permissions:
+         contents: write
+       steps:
+   ```
+
+3. At the very end of the `steps:` list (after the existing `Upload debug
+   APK` step), add this new step exactly as written:
+
+   ```yaml
+         - name: Publish quick build as a prerelease
+           uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
+           env:
+             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+           with:
+             tag: debug-latest
+             commit: ${{ github.sha }}
+             name: "Quick debug build (${{ github.ref_name }} @ ${{ github.sha }})"
+             body: |
+               Debug-signed convenience build, **not** a tested release.
+               Branch: `${{ github.ref_name }}`
+               Commit: `${{ github.sha }}`
+               Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+             artifacts: "mobile/app/build/outputs/apk/debug/catapult-mobile.apk"
+             prerelease: true
+             allowUpdates: true
+             removeArtifacts: true
+             generateReleaseNotes: false
+   ```
+
+4. Save the file. Do not change any other step in `quick-build.yaml`.
+
+#### Full resulting file (for reference / sanity check)
+
+If in doubt, the whole file should end up matching this (only the last two
+blocks — `permissions` and the new step — are new; everything above them is
+unchanged from today):
+
+```yaml
+name: quick-build
+run-name: "Quick debug build (${{ github.ref_name }})"
+on:
+  workflow_dispatch:
+concurrency:
+  group: quick-build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-debug-apk:
+    runs-on: "ubuntu-latest"
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          lfs: true
+          submodules: recursive
+          fetch-depth: 0
+      - name: Globally enable build cache and parallel execution
+        run: |
+          mkdir -p ~/.gradle
+
+          cat >> ~/.gradle/gradle.properties<< EOF
+          org.gradle.caching=true
+          org.gradle.parallel=true
+          EOF
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: gradle
+      - uses: android-actions/setup-android@7c5672355aaa8fde5f97a91aa9a99616d1ace6bc
+      - name: Enable Gradle remote build cache
+        uses: burrunan/gradle-cache-action@663fbad34e03c8f12b27f4999ac46e3d90f87eca
+        with:
+          debug: false
+          concurrent: true
+          read-only: true
+          build-root-directory: mobile
+
+      - name: Assemble debug APK
+        run: "./gradlew :app:assembleDebug"
+        working-directory: mobile
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: catapult-mobile-debug-apk
+          path: mobile/app/build/outputs/apk/debug/catapult-mobile.apk
+          retention-days: 14
+
+      - name: Publish quick build as a prerelease
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag: debug-latest
+          commit: ${{ github.sha }}
+          name: "Quick debug build (${{ github.ref_name }} @ ${{ github.sha }})"
+          body: |
+            Debug-signed convenience build, **not** a tested release.
+            Branch: `${{ github.ref_name }}`
+            Commit: `${{ github.sha }}`
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          artifacts: "mobile/app/build/outputs/apk/debug/catapult-mobile.apk"
+          prerelease: true
+          allowUpdates: true
+          removeArtifacts: true
+          generateReleaseNotes: false
+```
 
 ### Documentation changes (`RELEASING.md`)
 
-Update the existing "Quick debug build" section to say the APK is also
-published as the `debug-latest` prerelease, with the direct link pattern,
-once implemented.
+In the "Quick debug build" section, replace the sentence that starts with
+"This build is signed with the debug key and is never published as a GitHub
+Release" with:
+
+> This build is signed with the debug key. It is published as the rolling
+> `debug-latest` **prerelease** on GitHub (overwritten on every run) — see
+> `https://github.com/<owner>/<repo>/releases/tag/debug-latest`. It is not a
+> substitute for the full `develop-build` release below.
+
+Also delete the `> Planned: ...` blockquote that currently links to this
+document (it becomes stale once this is implemented).
+
+### Verification (run these after implementing, in order)
+
+1. Trigger the workflow:
+   `gh workflow run quick-build --repo <owner>/<repo> --ref <branch>`
+2. Wait for it to finish:
+   `gh run watch <run-id> --repo <owner>/<repo> --exit-status`
+3. Confirm the prerelease exists and has exactly one asset:
+   `gh release view debug-latest --repo <owner>/<repo>`
+   — check the output shows `prerelease: true` and one `.apk` asset.
+4. Run the workflow a second time (any branch) and repeat step 3 — confirm
+   the asset was replaced, not duplicated, and the release body's commit SHA
+   changed to match the new run.
+5. Confirm the "Latest release" shown at
+   `https://github.com/<owner>/<repo>/releases` is still the last proper
+   `develop-build` version (e.g. `0.90`), **not** `debug-latest` — this is
+   what "prerelease" is for. If `debug-latest` shows up as "Latest", the
+   `prerelease: true` field was dropped or misspelled; fix it before
+   considering this done.
 
 ## Explicitly out of scope for this plan
 
