@@ -1,6 +1,7 @@
 package com.matejdro.catapult.tools.ui
 
 import io.kotest.matchers.shouldBe
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.time.LocalDate
 import kotlin.io.path.writeText
@@ -71,6 +72,19 @@ class LogReaderTest {
          folder.resolve("log_2024-01-02_09-00-00.txt").writeText("")
 
          reader.read(folder, LocalDate.of(2024, 1, 2)) shouldBe ""
+      } finally {
+         folder.deleteRecursively()
+      }
+   }
+
+   @Test
+   fun `Decode matching files as UTF-8`() {
+      val folder = Files.createTempDirectory("log-reader").toFile()
+      try {
+         folder.resolve("log_2024-01-02_08-00-00.txt")
+            .writeText("Zażółć gęślą jaźń — 日本語 🌍", StandardCharsets.UTF_8)
+
+         reader.read(folder, LocalDate.of(2024, 1, 2)) shouldBe "Zażółć gęślą jaźń — 日本語 🌍"
       } finally {
          folder.deleteRecursively()
       }

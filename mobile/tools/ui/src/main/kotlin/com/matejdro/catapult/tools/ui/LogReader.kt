@@ -1,6 +1,7 @@
 package com.matejdro.catapult.tools.ui
 
 import java.io.File
+import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -9,9 +10,15 @@ import java.time.format.ResolverStyle
 
 class LogReader {
    fun read(logFolder: File, date: LocalDate): String? {
-      val contents = logFolder.listFiles()
-         ?.asSequence()
-         ?.mapNotNull { file ->
+      if (!logFolder.isDirectory) {
+         throw IOException("Log folder is not a readable directory: $logFolder")
+      }
+
+      val files = logFolder.listFiles()
+         ?: throw IOException("Unable to read log folder: $logFolder")
+
+      val contents = files.asSequence()
+         .mapNotNull { file ->
             if (!file.isFile) {
                return@mapNotNull null
             }
@@ -27,10 +34,9 @@ class LogReader {
                null
             }
          }
-         ?.sortedBy { it.first }
-         ?.map { it.second }
-         ?.toList()
-         .orEmpty()
+         .sortedBy { it.first }
+         .map { it.second }
+         .toList()
 
       return if (contents.isEmpty()) {
          null
