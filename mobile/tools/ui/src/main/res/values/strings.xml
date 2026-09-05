@@ -3,4 +3,11 @@
     <string name="permissions">Permissions</string>
     <string name="version">Catapult version %1$s</string>
     <string name="save_logs">Save logs</string>
+    <string name="read_today_logs">Read today&apos;s logs</string>
+    <string name="today_logs">Today&apos;s logs</string>
+    <string name="no_logs_today">No logs have been written today.</string>
+    <string name="copy_logs">Copy logs</string>
+    <string name="share_logs">Share logs</string>
+    <string name="logs_copied">Logs copied</string>
+    <string name="share_logs_title">Share today&apos;s logs</string>
 </resources>
