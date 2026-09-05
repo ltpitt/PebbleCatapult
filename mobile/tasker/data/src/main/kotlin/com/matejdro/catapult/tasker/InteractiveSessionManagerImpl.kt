@@ -7,8 +7,10 @@ import dev.zacsweers.metro.binding
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration
@@ -79,6 +81,26 @@ class InteractiveSessionManagerImpl(
    }
 
    override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+      sendNotificationInternal(title, body, vibration, durationMs, null)
+   }
+
+   override suspend fun sendNotification(
+      title: String,
+      body: String,
+      vibration: Int,
+      durationMs: Long,
+      startWatchapp: suspend () -> Unit,
+   ) {
+      sendNotificationInternal(title, body, vibration, durationMs, startWatchapp)
+   }
+
+   private suspend fun sendNotificationInternal(
+      title: String,
+      body: String,
+      vibration: Int,
+      durationMs: Long,
+      startWatchapp: (suspend () -> Unit)?,
+   ) {
       val session = mutex.withLock {
          activeSession?.also {
             activeSession = null
@@ -92,9 +114,18 @@ class InteractiveSessionManagerImpl(
       }
       // Notifications have no watch selector, so use the connected watch with the lowest ID.
       // Sorting avoids depending on connection/map insertion order when multiple watches are connected.
-      val sender = synchronized(senders) { senders.entries.minByOrNull { it.key }?.value }
-         ?: error("Watch connection is unavailable")
-      sender.sendNotification(title, body, vibration, durationMs)
+      var sender = synchronized(senders) { senders.entries.minByOrNull { it.key }?.value }
+      if (sender == null) {
+         startWatchapp?.invoke() ?: error("Watch connection is unavailable")
+         withTimeout(NOTIFICATION_CONNECTION_TIMEOUT_MS) {
+            while (sender == null) {
+               delay(NOTIFICATION_CONNECTION_POLL_INTERVAL_MS)
+               sender = synchronized(senders) { senders.entries.minByOrNull { it.key }?.value }
+            }
+         }
+      }
+      val notificationSender = sender ?: error("Watch connection is unavailable")
+      notificationSender.sendNotification(title, body, vibration, durationMs)
    }
 
    override fun cancelActive(reason: String) {
@@ -130,3 +161,6 @@ class InteractiveSessionManagerImpl(
          result is InteractiveTaskerResult.Confirmation
    } || result is InteractiveTaskerResult.Cancelled || result is InteractiveTaskerResult.Failed
 }
+
+private const val NOTIFICATION_CONNECTION_TIMEOUT_MS = 5_000L
+private const val NOTIFICATION_CONNECTION_POLL_INTERVAL_MS = 50L
