@@ -12,6 +12,12 @@ android {
    androidResources.enable = true
 }
 
+kotlin {
+   compilerOptions {
+      optIn.add("com.google.accompanist.permissions.ExperimentalPermissionsApi")
+   }
+}
+
 dependencies {
    implementation(projects.commonCompose)
    api(libs.kotlinova.navigation)

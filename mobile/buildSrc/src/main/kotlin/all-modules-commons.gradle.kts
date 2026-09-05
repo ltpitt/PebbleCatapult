@@ -21,7 +21,6 @@ if (name.startsWith("common-")) {
 commonKotlinCompilerOptions {
    optIn.add("kotlinx.coroutines.ExperimentalCoroutinesApi")
    optIn.add("kotlinx.coroutines.FlowPreview")
-   optIn.add("com.google.accompanist.permissions.ExperimentalPermissionsApi")
    optIn.add("kotlin.time.ExperimentalTime")
    optIn.add("kotlin.uuid.ExperimentalUuidApi")
    optIn.add("kotlin.ExperimentalUnsignedTypes")

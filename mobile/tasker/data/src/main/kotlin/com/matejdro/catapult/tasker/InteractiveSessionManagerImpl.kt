@@ -35,12 +35,12 @@ class InteractiveSessionManagerImpl(
    override fun registerSender(sender: InteractiveRequestSender) {
       registerSender("default", sender)
    }
-   override fun registerSender(watch: String, sender: InteractiveRequestSender) {
-      synchronized(senders) { senders[watch] = sender }
+   override fun registerSender(watchId: String, sender: InteractiveRequestSender) {
+      synchronized(senders) { senders[watchId] = sender }
    }
 
-   override fun unregisterSender(watch: String, sender: InteractiveRequestSender) {
-      synchronized(senders) { if (senders[watch] === sender) senders.remove(watch) }
+   override fun unregisterSender(watchId: String, sender: InteractiveRequestSender) {
+      synchronized(senders) { if (senders[watchId] === sender) senders.remove(watchId) }
    }
 
    override suspend fun awaitResult(request: InteractiveTaskerRequest) =
@@ -76,7 +76,6 @@ class InteractiveSessionManagerImpl(
             mutex.withLock { if (activeSession?.id == session.id) activeSession = null }
          }
       }
-
    }
 
    override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
@@ -102,9 +101,9 @@ class InteractiveSessionManagerImpl(
       kotlinx.coroutines.runBlocking { cancelActive("default", reason) }
    }
 
-   override suspend fun cancelActive(watch: String, reason: String) {
+   override suspend fun cancelActive(watchId: String, reason: String) {
       val session = mutex.withLock {
-         activeSession?.takeIf { it.watch == watch }?.also {
+         activeSession?.takeIf { it.watch == watchId }?.also {
             activeSession = null
             it.result.complete(InteractiveTaskerResult.Cancelled(reason))
          }
@@ -122,8 +121,12 @@ class InteractiveSessionManagerImpl(
    }
 
    private fun ActiveSession.accepts(result: InteractiveTaskerResult) = when (request) {
-      is InteractiveTaskerRequest.List -> result is InteractiveTaskerResult.Selection &&
-         request.items.any { it.id == result.id && it.value == result.value }
-      is InteractiveTaskerRequest.Confirmation -> result is InteractiveTaskerResult.Confirmation
+      is InteractiveTaskerRequest.List ->
+         result is InteractiveTaskerResult.Selection &&
+            request.items.any {
+               it.id == result.id && it.value == result.value
+            }
+      is InteractiveTaskerRequest.Confirmation ->
+         result is InteractiveTaskerResult.Confirmation
    } || result is InteractiveTaskerResult.Cancelled || result is InteractiveTaskerResult.Failed
 }
