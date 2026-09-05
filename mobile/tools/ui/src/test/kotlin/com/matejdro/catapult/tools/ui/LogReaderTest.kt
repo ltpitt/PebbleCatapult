@@ -62,4 +62,29 @@ class LogReaderTest {
          folder.deleteRecursively()
       }
    }
+
+   @Test
+   fun `Return empty string when all matching files are empty`() {
+      val folder = Files.createTempDirectory("log-reader").toFile()
+      try {
+         folder.resolve("log_2024-01-02_08-00-00.txt").writeText("")
+         folder.resolve("log_2024-01-02_09-00-00.txt").writeText("")
+
+         reader.read(folder, LocalDate.of(2024, 1, 2)) shouldBe ""
+      } finally {
+         folder.deleteRecursively()
+      }
+   }
+
+   @Test
+   fun `Ignore matching directories`() {
+      val folder = Files.createTempDirectory("log-reader").toFile()
+      try {
+         Files.createDirectory(folder.toPath().resolve("log_2024-01-02_08-00-00.txt"))
+
+         reader.read(folder, LocalDate.of(2024, 1, 2)) shouldBe null
+      } finally {
+         folder.deleteRecursively()
+      }
+   }
 }

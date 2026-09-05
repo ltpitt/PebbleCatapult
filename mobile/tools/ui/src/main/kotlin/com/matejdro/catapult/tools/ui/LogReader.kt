@@ -12,6 +12,10 @@ class LogReader {
       val contents = logFolder.listFiles()
          ?.asSequence()
          ?.mapNotNull { file ->
+            if (!file.isFile) {
+               return@mapNotNull null
+            }
+
             val timestamp = LOG_FILENAME.matchEntire(file.name)
                ?.groupValues
                ?.get(1)
@@ -25,11 +29,14 @@ class LogReader {
          }
          ?.sortedBy { it.first }
          ?.map { it.second }
-         ?.filter { it.isNotEmpty() }
          ?.toList()
          .orEmpty()
 
-      return contents.takeIf { it.isNotEmpty() }?.joinToString("\n")
+      return if (contents.isEmpty()) {
+         null
+      } else {
+         contents.filter { it.isNotEmpty() }.joinToString("\n")
+      }
    }
 
    private fun parseTimestamp(value: String): LocalDateTime? =
