@@ -75,6 +75,7 @@ class DirectoryListRepositoryImpl(
    }
 
    private suspend fun syncStartingDirectory() {
+      // Generated folder entries live in the starting directory's bucket.
       watchSyncer.syncDirectory(STARTING_DIRECTORY_ID)
    }
 }

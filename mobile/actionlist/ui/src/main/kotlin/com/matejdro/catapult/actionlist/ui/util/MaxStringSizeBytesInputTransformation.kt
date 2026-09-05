@@ -20,6 +20,7 @@ class MaxStringSizeBytesInputTransformation(private val maxBytes: Int) : InputTr
 
       var bytes = 0
       var end = 0
+      // Count UTF-8 bytes per code point so multi-byte characters stay intact.
       while (end < text.length) {
          val codePoint = text.codePointAt(end)
          val characterBytes = when {

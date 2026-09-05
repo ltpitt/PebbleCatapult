@@ -76,6 +76,7 @@ static void window_load(Window* window)
 {
     WindowActionList* window_action_list = window_get_user_data(window);
     window_action_list->current_menu_data.count = 0;
+    // Keep these window-owned so their memory is released when the action list closes.
     window_action_list->folder_arrow = gbitmap_create_with_resource(RESOURCE_ID_FOLDER_ARROW);
     window_action_list->folder_arrow_highlight = gbitmap_create_with_resource(
         RESOURCE_ID_FOLDER_ARROW_HIGHLIGHT
