@@ -2,7 +2,6 @@ package com.matejdro.catapult.tools.ui
 
 import com.matejdro.catapult.logging.FileLoggingController
 import io.kotest.matchers.types.shouldBeInstanceOf
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
@@ -10,15 +9,15 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import si.inova.kotlinova.core.outcome.Outcome
 import si.inova.kotlinova.core.outcome.CoroutineResourceManager
-import si.inova.kotlinova.core.test.outcomes.shouldBeSuccessWithData
-import si.inova.kotlinova.core.test.outcomes.testCoroutineResourceManager
 import si.inova.kotlinova.core.reporting.ErrorReporter
+import si.inova.kotlinova.core.test.TestScopeWithDispatcherProvider
+import si.inova.kotlinova.core.test.outcomes.shouldBeSuccessWithData
 import java.io.File
 import java.nio.file.Files
 import java.time.LocalDate
 
 class LogReaderViewModelTest {
-   private val scope = TestScope()
+   private val scope = TestScopeWithDispatcherProvider()
    private lateinit var logFolder: File
    private lateinit var controller: FakeFileLoggingController
    private lateinit var viewModel: LogReaderViewModel
@@ -28,7 +27,7 @@ class LogReaderViewModelTest {
       logFolder = Files.createTempDirectory("log-reader-view-model-test").toFile()
       controller = FakeFileLoggingController(logFolder)
       viewModel = LogReaderViewModel(
-         scope.testCoroutineResourceManager(),
+         CoroutineResourceManager(scope, ErrorReporter {}),
          {},
          controller,
       ) { LocalDate.of(2026, 9, 6) }
@@ -61,7 +60,7 @@ class LogReaderViewModelTest {
    fun `exposes error when flushing logs fails`() = scope.runTest {
       controller.flushFailure = IllegalStateException("flush failed")
       val errorViewModel = LogReaderViewModel(
-         CoroutineResourceManager(backgroundScope, ErrorReporter {}),
+         CoroutineResourceManager(scope, ErrorReporter {}),
          {},
          controller,
       ) { LocalDate.of(2026, 9, 6) }
