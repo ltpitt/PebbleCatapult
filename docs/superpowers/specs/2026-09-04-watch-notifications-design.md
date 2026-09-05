@@ -22,7 +22,9 @@ receives a dispatch success/failure status and does not wait for user input.
 
 ## Compatibility and failure handling
 
-This is separate from interactive sessions and Timeline pins. Old watches
+This is separate from interactive sessions and Timeline pins. It also replaces
+AutoPebble's custom CSV vibration patterns with a bounded vibration enum (see the
+[parity matrix](../reference/autopebble-parity-matrix.md)). Old watches
 negotiate the existing protocol version and do not receive notification
 packets. A disconnected watch, unsupported packet version, oversized text, or
 failed send produces an explicit Tasker failure. When multiple watches are

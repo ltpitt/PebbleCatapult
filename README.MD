@@ -2,6 +2,10 @@
 
 A watchapp for PebbleOS watches for interacting with the [Tasker](https://tasker.joaoapps.com/).
 
+Catapult is an AutoPebble-compatible successor. Its relationship to the original
+AutoPebble app — what is implemented, planned, or intentionally dropped — is
+tracked in the [AutoPebble parity matrix](docs/superpowers/reference/autopebble-parity-matrix.md).
+
 ![](docs/demo.gif)
 
 # Install

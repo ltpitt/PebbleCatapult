@@ -9,13 +9,15 @@ labels editable.
 
 Use opaque, non-empty action IDs for automation and separate human-readable
 labels for the watch. IDs are returned unchanged; labels are never used as
-identifiers. Define a shared result contract for `success`, `cancelled`,
-`timeout`, and `failed`, with an optional failure reason.
+identifiers. This spec owns the shared
+[result contract](../reference/protocol-and-results.md#result-contract) —
+`success`, `cancelled`, `timeout`, and `failed`, with an optional failure
+reason, plus `%catapult_result_action` for the gesture kind.
 
-When a configured secondary action is absent, the watch falls back to the
-primary action only where the request explicitly permits fallback. Otherwise it
-returns a distinct failure result. The contract is shared by lists, detail
-screens, and quick actions.
+When a configured secondary (`long_select`) action is absent, the watch falls
+back to the primary action only where the request explicitly permits fallback.
+Otherwise it returns a distinct `failed` result. The contract is shared by
+lists, detail screens, and quick actions.
 
 ## Failure handling and testing
 

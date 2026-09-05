@@ -2,6 +2,11 @@
 
 Dictionary entry `0` will always contain the packet ID (uint8)
 
+> Packet-ID allocation, the shared Tasker result contract, gesture vocabulary,
+> and the interactive session model are tracked in
+> [`docs/superpowers/reference/protocol-and-results.md`](docs/superpowers/reference/protocol-and-results.md).
+> Reserve a new packet ID there before documenting its wire format here.
+
 ## Phone -> Watch
 
 ### Phone Welcome (packet 1)

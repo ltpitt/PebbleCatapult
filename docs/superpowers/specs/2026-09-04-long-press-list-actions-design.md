@@ -7,16 +7,19 @@ the existing tap-to-select behavior.
 
 ## Design
 
-Extend each list item with an optional long-press action identifier and return
-the selected item ID, value, and interaction kind. The phone sends the action
-metadata in the existing bounded, chunked list protocol. The watch displays
-the same list and maps a normal press to `select` and a long press to
-`long_select`; Back remains cancellation.
+Extend each list item with an optional `long_select` action identifier and
+return the selected item ID, value, and gesture kind. The phone sends the action
+metadata in the existing bounded, chunked list protocol, extending
+`LIST_SELECTION` with a gesture-kind field rather than adding a packet (see the
+[packet registry](../reference/protocol-and-results.md#packet-id-allocation)).
+The watch displays the same list and maps a normal press to `select` and a long
+press to `long_select`; `back` remains cancellation.
 
-Tasker receives `%catapult_status`, `%catapult_result_id`,
-`%catapult_result_value`, and `%catapult_result_action`. Missing long-press
-metadata falls back to normal selection, so existing configurations remain
-valid.
+Tasker receives the variables defined in the
+[result contract](../reference/protocol-and-results.md#result-contract):
+`%catapult_status`, `%catapult_result_id`, `%catapult_result_value`, and
+`%catapult_result_action`. Missing `long_select` metadata falls back to normal
+selection, so existing configurations remain valid.
 
 ## Failure handling and testing
 
