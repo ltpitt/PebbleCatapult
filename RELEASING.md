@@ -20,6 +20,10 @@ This build is signed with the debug key and is never published as a GitHub
 Release. Use the full `develop-build` workflow below for anything you intend
 to actually release.
 
+> Planned: publish this build as a rolling `debug-latest` prerelease too, so
+> it's a shareable link instead of a workflow artifact. See
+> [`docs/QUICK_RELEASE_PLAN.md`](docs/QUICK_RELEASE_PLAN.md) for the design.
+
 ## Automated release
 
 The canonical process is the `develop-build` workflow in
@@ -51,7 +55,12 @@ The workflow needs:
 
 - GitHub Actions enabled for the repository.
 - Workflow permissions that allow `GITHUB_TOKEN` to push commits and tags and
-  create releases.
+  create releases. On a fork this defaults to **read-only** and must be
+  changed explicitly: **Settings → Actions → General → Workflow
+  permissions → Read and write permissions** (or
+  `gh api -X PUT repos/<owner>/<repo>/actions/permissions/workflow -f default_workflow_permissions=write`).
+  Without this, the workflow fails at the "Push version" step with
+  `remote: Permission ... denied` / `403`.
 - Repository secrets `RELEASE_KEY_PASSWORD` and
   `RELEASE_KEYSTORE_PASSWORD` for the signed Android release build (see the
   note below if this fork does not have the original password).
