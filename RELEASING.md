@@ -3,6 +3,22 @@
 Catapult releases produce both the Android APK and Pebble watchapp PBW from
 the same release workflow.
 
+## Makefile shortcuts
+
+Common operations are wrapped in a `Makefile` (a thin wrapper over
+`scripts/*.sh` — the scripts also work standalone, e.g. `./scripts/build-debug.sh`).
+Run `make help` for the full list. Highlights:
+
+- `make build` — build a debug APK locally.
+- `make check` — run the same lint/detekt/buildHealth checks as CI, locally,
+  before pushing.
+- `make test` — run unit tests.
+- `make install` — build the debug APK and install it via `adb`.
+- `make quick-release` — trigger the `quick-build` workflow on the current
+  branch and print the resulting `debug-latest` release URL when done.
+- `make release` — trigger the full `develop-build` release workflow.
+- `make releases` — list recent GitHub Releases.
+
 ## Quick debug build (for trying changes on a phone)
 
 If you just want an installable APK to sideload and test, without waiting for
