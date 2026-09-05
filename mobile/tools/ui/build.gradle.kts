@@ -23,4 +23,6 @@ dependencies {
    implementation(projects.commonCompose)
    implementation(libs.androidx.core)
    implementation(libs.dispatch)
+
+   testImplementation(libs.kotlinova.core.test)
 }
