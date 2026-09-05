@@ -3,7 +3,7 @@ package com.matejdro.catapult.tools.ui
 import com.matejdro.catapult.logging.FileLoggingController
 import io.kotest.matchers.types.shouldBeInstanceOf
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -44,7 +44,7 @@ class LogReaderViewModelTest {
       logFolder.resolve("log_2026-09-06_08-00-00.txt").writeText("hello")
 
       viewModel.readTodayLogs()
-      awaitResult()
+      advanceUntilIdle()
 
       viewModel.logContent.value shouldBeSuccessWithData "hello"
    }
@@ -52,7 +52,7 @@ class LogReaderViewModelTest {
    @Test
    fun `exposes empty result when no logs exist`() = scope.runTest {
       viewModel.readTodayLogs()
-      awaitResult()
+      advanceUntilIdle()
 
       viewModel.logContent.value shouldBeSuccessWithData null
    }
@@ -67,21 +67,9 @@ class LogReaderViewModelTest {
       ) { LocalDate.of(2026, 9, 6) }
 
       errorViewModel.readTodayLogs()
-      repeat(100) {
-         runCurrent()
-         if (errorViewModel.logContent.value is Outcome.Error) return@repeat
-         Thread.sleep(10)
-      }
+      advanceUntilIdle()
 
       errorViewModel.logContent.value.shouldBeInstanceOf<Outcome.Error<String?>>()
-   }
-
-   private fun TestScope.awaitResult() {
-      repeat(100) {
-         runCurrent()
-         if (viewModel.logContent.value !is Outcome.Progress) return
-         Thread.sleep(10)
-      }
    }
 
    private class FakeFileLoggingController(
