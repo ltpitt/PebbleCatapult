@@ -22,6 +22,7 @@ dependencies {
 
    implementation(projects.commonCompose)
    implementation(libs.androidx.core)
+   implementation(libs.androidx.compose.material.icons)
    implementation(libs.dispatch)
 
    testImplementation(libs.kotlinova.core.test)

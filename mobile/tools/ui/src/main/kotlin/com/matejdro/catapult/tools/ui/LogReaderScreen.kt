@@ -6,7 +6,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -72,7 +77,10 @@ private fun LogReaderScreenContent(
             title = { Text(stringResource(R.string.today_logs)) },
             navigationIcon = {
                IconButton(onClick = goBack) {
-                  Text("‹", modifier = Modifier, fontFamily = FontFamily.Default)
+                  Icon(
+                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                     contentDescription = stringResource(R.string.back),
+                  )
                }
             },
             actions = {
@@ -86,7 +94,10 @@ private fun LogReaderScreenContent(
                         }
                      },
                   ) {
-                     Text("⧉", fontFamily = FontFamily.Default)
+                     Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = stringResource(R.string.copy_logs),
+                     )
                   }
                   IconButton(
                      onClick = {
@@ -99,7 +110,10 @@ private fun LogReaderScreenContent(
                         )
                      },
                   ) {
-                     Text("↗", fontFamily = FontFamily.Default)
+                     Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = stringResource(R.string.share_logs),
+                     )
                   }
                }
             },
