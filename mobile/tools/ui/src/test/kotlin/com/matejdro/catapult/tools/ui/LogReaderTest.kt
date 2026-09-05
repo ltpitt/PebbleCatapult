@@ -1,10 +1,12 @@
 package com.matejdro.catapult.tools.ui
 
 import io.kotest.matchers.shouldBe
+import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.time.LocalDate
 import kotlin.io.path.writeText
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.Test
 
 class LogReaderTest {
@@ -99,6 +101,18 @@ class LogReaderTest {
          reader.read(folder, LocalDate.of(2024, 1, 2)) shouldBe null
       } finally {
          folder.deleteRecursively()
+      }
+   }
+
+   @Test
+   fun `Throw IOException when log folder is a regular file`() {
+      val file = Files.createTempFile("log-reader", ".txt").toFile()
+      try {
+         assertThrows<IOException> {
+            reader.read(file, LocalDate.of(2024, 1, 2))
+         }
+      } finally {
+         file.delete()
       }
    }
 }
