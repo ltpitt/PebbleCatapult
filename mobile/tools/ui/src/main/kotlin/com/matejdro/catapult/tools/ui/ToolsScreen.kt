@@ -92,10 +92,6 @@ private fun ToolsScreenContent(
       }
 
       item {
-         ToolButton(onClick = openLogReader, icon = R.drawable.logs, text = R.string.read_today_logs)
-      }
-
-      item {
          ErrorAlertDialog(loggingTransmissionState)
 
          if (loggingTransmissionState is Outcome.Progress<*>) {
@@ -122,6 +118,10 @@ private fun ToolsScreenContent(
                }
             }
          }
+      }
+
+      item {
+         ToolButton(onClick = openLogReader, icon = R.drawable.logs, text = R.string.read_today_logs)
       }
 
       item(span = { GridItemSpan(maxLineSpan) }) {
