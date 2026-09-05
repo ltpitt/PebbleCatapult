@@ -26,3 +26,16 @@ require_cmd() {
     exit 1
   fi
 }
+
+# Print "owner/repo" derived from the 'origin' git remote, regardless of
+# whether `gh` has a default repository configured (`gh repo set-default`).
+# Every gh(1) call in these scripts passes this explicitly via --repo so
+# they work the same in a fresh clone/CI shell as they do after gh has been
+# manually configured.
+gh_repo() {
+  local url
+  url="$(git remote get-url origin)"
+  # Handles both git@github.com:owner/repo.git and
+  # https://github.com/owner/repo.git forms.
+  echo "$url" | sed -E 's#^(git@|https://)github.com[:/]##; s#\.git$##'
+}

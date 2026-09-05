@@ -4,4 +4,4 @@
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 require_cmd gh "Install the GitHub CLI: https://cli.github.com/"
 
-gh release list --limit 10
+gh release list --repo "$(gh_repo)" --limit 10
