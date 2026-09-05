@@ -8,6 +8,8 @@ concurrency:
 jobs:
   build-debug-apk:
     runs-on: "ubuntu-latest"
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -51,3 +53,22 @@ jobs:
           name: catapult-mobile-debug-apk
           path: mobile/app/build/outputs/apk/debug/catapult-mobile.apk
           retention-days: 14
+
+      - name: Publish quick build as a prerelease
+        uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag: debug-latest
+          commit: ${{ github.sha }}
+          name: "Quick debug build (${{ github.ref_name }} @ ${{ github.sha }})"
+          body: |
+            Debug-signed convenience build, **not** a tested release.
+            Branch: `${{ github.ref_name }}`
+            Commit: `${{ github.sha }}`
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          artifacts: "mobile/app/build/outputs/apk/debug/catapult-mobile.apk"
+          prerelease: true
+          allowUpdates: true
+          removeArtifacts: true
+          generateReleaseNotes: false

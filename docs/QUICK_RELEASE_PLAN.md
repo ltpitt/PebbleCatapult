@@ -1,11 +1,9 @@
 # Plan: quick debug builds published as a GitHub Release
 
-Status: **planned, not implemented yet**. This document is written so it can
-be implemented mechanically, step by step, without needing to make design
-judgment calls — those calls are already made below. If you are implementing
-this: follow "Implementation steps" in order, use the exact YAML given, and
-run the exact verification commands at the end. Do not improvise field names,
-action versions, or file paths — copy them from this document.
+Status: **implemented** in `.github/workflows/quick-build.yaml`. This
+document is kept as the design record and as a reference if the workflow
+ever needs to be reconstructed or reviewed. The "Implementation steps" and
+"Full resulting file" sections below describe what was actually applied.
 
 ## Problem
 

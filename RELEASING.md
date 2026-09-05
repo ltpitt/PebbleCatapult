@@ -16,13 +16,10 @@ the full test/lint/screenshot-test/watchapp/versioning pipeline, use the
 3. Download the APK from the run's **Artifacts** section
    (`catapult-mobile-debug-apk`) and sideload it.
 
-This build is signed with the debug key and is never published as a GitHub
-Release. Use the full `develop-build` workflow below for anything you intend
-to actually release.
-
-> Planned: publish this build as a rolling `debug-latest` prerelease too, so
-> it's a shareable link instead of a workflow artifact. See
-> [`docs/QUICK_RELEASE_PLAN.md`](docs/QUICK_RELEASE_PLAN.md) for the design.
+This build is signed with the debug key. It is published as the rolling
+`debug-latest` **prerelease** on GitHub (overwritten on every run) — see
+`https://github.com/ltpitt/PebbleCatapult/releases/tag/debug-latest`. It is
+not a substitute for the full `develop-build` release below.
 
 ## Automated release
 
