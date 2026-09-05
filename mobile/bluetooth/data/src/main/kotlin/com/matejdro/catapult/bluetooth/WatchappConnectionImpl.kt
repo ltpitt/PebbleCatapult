@@ -25,6 +25,7 @@ import io.rebble.pebblekit2.common.model.PebbleDictionaryItem.UInt8
 import io.rebble.pebblekit2.common.model.ReceiveResult
 import io.rebble.pebblekit2.common.model.WatchIdentifier
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
@@ -45,6 +46,8 @@ class WatchappConnectionImpl(
    private val watch: WatchIdentifier,
 ) : WatchAppConnection, InteractiveRequestSender {
    private var watchBufferSize: Int = 0
+   private var watchProtocolValid = true
+   private val watchReady = CompletableDeferred<Int>()
 
    init {
       interactiveSessionManager.registerSender(watch.toString(), this)
@@ -52,6 +55,7 @@ class WatchappConnectionImpl(
          try {
             packetQueue.runQueue()
          } finally {
+            watchReady.completeExceptionally(WatchConnectionUnavailableException())
             interactiveSessionManager.cancelActive(watch.toString(), "Watch connection closed")
             interactiveSessionManager.unregisterSender(watch.toString(), this@WatchappConnectionImpl)
          }
@@ -70,8 +74,8 @@ class WatchappConnectionImpl(
    }
 
    override suspend fun sendNotification(packet: PebbleDictionary) {
-      val limit = watchBufferSize
-      require(limit > 0) { "Watch connection is unavailable" }
+      val limit = watchReady.await()
+      if (!watchProtocolValid || limit <= 0) throw WatchConnectionUnavailableException()
       packetQueue.sendPacket(packet)
    }
 
@@ -83,8 +87,9 @@ class WatchappConnectionImpl(
 
    override suspend fun sendNotification(notification: WatchNotificationMessage.Show) {
       withTimeout(NOTIFICATION_SEND_TIMEOUT) {
-         if (watchBufferSize <= 0) throw WatchConnectionUnavailableException()
-         sendNotification(notification.toPacket(watchBufferSize))
+         val limit = watchReady.await()
+         if (!watchProtocolValid || limit <= 0) throw WatchConnectionUnavailableException()
+         sendNotification(notification.toPacket(limit))
       }
    }
 
@@ -193,6 +198,8 @@ class WatchappConnectionImpl(
       val watchProtocolVersion = data.requireUint(1u)
       if (watchProtocolVersion != PROTOCOL_VERSION.toUInt()) {
          watchBufferSize = 0
+         watchProtocolValid = false
+         watchReady.completeExceptionally(WatchConnectionUnavailableException())
          logcat { "Mismatch protocol version $watchProtocolVersion" }
          packetQueue.sendPacket(
             mapOf(
@@ -211,6 +218,8 @@ class WatchappConnectionImpl(
 
       val watchVersion = data.requireUint(2u).toUShort()
       watchBufferSize = data.requireUint(3u).toInt()
+      watchProtocolValid = true
+      watchReady.complete(watchBufferSize)
       logcat { "Watch data: version=$watchVersion, buffer size=$watchBufferSize" }
 
       bucketSyncWatchLoop.sendFirstPacketAndStartLoop(

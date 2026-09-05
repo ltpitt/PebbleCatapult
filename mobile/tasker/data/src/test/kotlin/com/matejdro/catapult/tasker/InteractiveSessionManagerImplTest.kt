@@ -363,6 +363,24 @@ class InteractiveSessionManagerImplTest {
    }
 
    @Test
+   fun `notification starts watch app when no connection is active`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      var dispatched = false
+      val sender = object : InteractiveRequestSender {
+         override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) = Unit
+         override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+            dispatched = true
+         }
+      }
+
+      manager.sendNotification("Title", "Body", 0, 1_000) {
+         manager.registerSender("watch", sender)
+      }
+
+      dispatched shouldBe true
+   }
+
+   @Test
    fun `notification cancels session on another watch and survives cancel transport failure`() = runTest {
       val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
       var cancelled = false
