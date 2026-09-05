@@ -416,7 +416,9 @@ class WatchappConnectionImplTest {
       )
       runCurrent()
 
-      sender.sentData.takeLast(2).map { (it[3u] as PebbleDictionaryItem.UInt32).value } shouldBe listOf(0u, 1u)
+      sender.sentData.takeLast(2).map {
+         ((it[3u] ?: error("Missing chunk sequence")) as PebbleDictionaryItem.UInt32).value
+      } shouldBe listOf(0u, 1u)
    }
 
    @Test

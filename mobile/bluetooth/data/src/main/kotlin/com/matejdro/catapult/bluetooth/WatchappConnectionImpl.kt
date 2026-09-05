@@ -26,10 +26,12 @@ import io.rebble.pebblekit2.common.model.ReceiveResult
 import io.rebble.pebblekit2.common.model.WatchIdentifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withContext
 import logcat.logcat
 
 @Inject
@@ -56,7 +58,12 @@ class WatchappConnectionImpl(
             packetQueue.runQueue()
          } finally {
             watchReady.completeExceptionally(WatchConnectionUnavailableException())
-            interactiveSessionManager.cancelActive(watch.toString(), "Watch connection closed")
+            withContext(NonCancellable) {
+               interactiveSessionManager.cancelActive(
+                  watchId = watch.toString(),
+                  reason = "Watch connection closed",
+               )
+            }
             interactiveSessionManager.unregisterSender(watch.toString(), this@WatchappConnectionImpl)
          }
       }
@@ -81,7 +88,7 @@ class WatchappConnectionImpl(
 
    override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
       val style = WatchNotificationMessage.Vibration.entries.getOrNull(vibration)
-        ?: throw IllegalArgumentException("Invalid vibration value")
+         ?: throw IllegalArgumentException("Invalid vibration value")
       sendNotification(WatchNotificationMessage.Show(title, body, style, durationMs))
    }
 
@@ -95,23 +102,33 @@ class WatchappConnectionImpl(
 
    override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) {
       val message = when (request) {
-        is InteractiveTaskerRequest.List -> InteractiveWatchMessage.ShowList(
-           sessionId,
-           request.title,
-           request.items.map { InteractiveWatchMessage.Item(it.id, it.value) },
-        )
-        is InteractiveTaskerRequest.Confirmation -> InteractiveWatchMessage.ShowConfirmation(
-           sessionId,
-           request.title,
-           request.message,
-        )
+         is InteractiveTaskerRequest.List -> InteractiveWatchMessage.ShowList(
+            sessionId = sessionId,
+            title = request.title,
+            items = request.items.map { item ->
+               InteractiveWatchMessage.Item(
+                  id = item.id,
+                  value = item.value,
+               )
+            },
+         )
+         is InteractiveTaskerRequest.Confirmation -> InteractiveWatchMessage.ShowConfirmation(
+            sessionId = sessionId,
+            title = request.title,
+            message = request.message,
+         )
       }
 
       sendInteractiveRequest(message)
    }
 
    override suspend fun cancel(sessionId: UInt, reason: String) {
-      sendInteractiveRequest(InteractiveWatchMessage.Cancel(sessionId, reason))
+      sendInteractiveRequest(
+         InteractiveWatchMessage.Cancel(
+            sessionId = sessionId,
+            reason = reason,
+         ),
+      )
    }
 
    override suspend fun onPacketReceived(data: PebbleDictionary): ReceiveResult {
@@ -135,7 +152,6 @@ class WatchappConnectionImpl(
             logcat { "Unknown packet ID. Nacking..." }
             ReceiveResult.Nack
          }
-
       }
    }
 
@@ -148,7 +164,8 @@ class WatchappConnectionImpl(
 
       try {
          sendInteractivePackets(message.packets(limit))
-      } catch (e: InteractiveSendTimeoutException) {
+      } catch (expected: InteractiveSendTimeoutException) {
+         logcat { "Interactive request could not be sent before the timeout expired" }
          failInteractive(message.sessionId, "Interactive request could not be sent")
       } catch (e: CancellationException) {
          throw e
@@ -163,13 +180,16 @@ class WatchappConnectionImpl(
       val message = try {
          InteractiveWatchMessage.decode(data)
       } catch (e: IllegalArgumentException) {
-         logcat { "Malformed interactive packet: ${e.message}" }
+         logcat { "Malformed interactive packet: ${e.message ?: "unknown reason"}" }
          return ReceiveResult.Nack
       }
 
       val result = when (message) {
          is InteractiveWatchMessage.ListSelection ->
-            InteractiveTaskerResult.Selection(message.selectedItemId, message.selectedItemValue)
+            InteractiveTaskerResult.Selection(
+               id = message.selectedItemId,
+               value = message.selectedItemValue,
+            )
          is InteractiveWatchMessage.ConfirmationResult ->
             InteractiveTaskerResult.Confirmation(message.accepted)
          is InteractiveWatchMessage.Cancel ->
