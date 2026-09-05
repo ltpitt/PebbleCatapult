@@ -36,8 +36,30 @@ The workflow needs:
 - Workflow permissions that allow `GITHUB_TOKEN` to push commits and tags and
   create releases.
 - Repository secrets `RELEASE_KEY_PASSWORD` and
-  `RELEASE_KEYSTORE_PASSWORD` for the signed Android release build.
+  `RELEASE_KEYSTORE_PASSWORD` for the signed Android release build (see the
+  note below if this fork does not have the original password).
 - Git LFS and recursive submodules available to the checkout.
+
+### Known issue on this fork: lost release keystore password
+
+`mobile/keys/release.jks` is byte-identical to the upstream repository's file,
+but the password that protects it was never part of this fork's secrets and
+could not be recovered. As a temporary measure, `mobile/app/build.gradle.kts`
+signs the `release` build type with the **debug** signing config instead of
+`release`. This keeps the automated pipeline working, but:
+
+- The resulting APK is signed with the debug key, not suitable for Play Store
+  distribution or any channel that expects a stable, private signing key.
+- If you obtain the real `RELEASE_KEY_PASSWORD` /
+  `RELEASE_KEYSTORE_PASSWORD`, set them as repository secrets and revert the
+  `signingConfig = signingConfigs.getByName("debug")` line in
+  `mobile/app/build.gradle.kts` back to
+  `signingConfig = signingConfigs.getByName("release")`.
+- If the password is permanently unrecoverable, generate a new release
+  keystore, store its password as a repository secret, and replace
+  `mobile/keys/release.jks`. Note this changes the app's signing identity,
+  which matters if the app is ever published somewhere that checks signatures
+  (e.g. Play Store update compatibility).
 
 The release job also installs the Pebble SDK and uses Java 21 for the Android
 build. These tools are installed by the workflow; they are not prerequisites

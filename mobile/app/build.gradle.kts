@@ -66,7 +66,10 @@ android {
             "proguard-rules.pro"
          )
 
-         signingConfig = signingConfigs.getByName("release")
+         // TODO: The original release.jks password was lost (see RELEASING.md). Using the
+         // debug signing config as a temporary measure. Release builds are NOT suitable for
+         // Play Store distribution until a new release keystore/password is provisioned.
+         signingConfig = signingConfigs.getByName("debug")
       }
    }
 
