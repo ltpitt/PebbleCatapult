@@ -17,6 +17,12 @@ Use its layout, native layer types, typography, colors, spacing, and interaction
 patterns as the baseline; adapt only the data and lifecycle behavior required by
 Catapult. This rule applies to every implementation plan and screen variant.
 
+Android-to-Pebble communication must start from the official
+[PebbleKit Android 2](https://github.com/pebble-dev/PebbleKitAndroid2) APIs and
+documentation. Prefer typed `PebbleSender` operations, including
+`insertTimelinePin` for official Pebble timeline/notification experiences, over
+custom protocols or legacy companion broadcasts when supported.
+
 ## Gesture vocabulary
 
 Interactive screens use exactly three gestures. No third "multi-click" tier
