@@ -59,8 +59,13 @@ assets="$(gh release view debug-latest --repo "$repo" --json assets --jq '[.asse
 target_commit="$(gh release view debug-latest --repo "$repo" --json targetCommitish --jq '.targetCommitish // ""')"
 body="$(gh release view debug-latest --repo "$repo" --json body --jq '.body // ""')"
 body_commit="$(jq -nr --arg body "$body" 'try ($body | capture("Commit: `(?<commit>[0-9a-fA-F]{40})`").commit) catch empty')"
+tag_commit="$(gh api "repos/$repo/commits/debug-latest" --jq '.sha // empty')"
 if [[ -z "$body_commit" ]]; then
   echo "error: debug-latest has an empty or malformed release body; expected a 40-character Commit line" >&2
+  exit 1
+fi
+if [[ -z "$tag_commit" ]]; then
+  echo "error: debug-latest does not resolve to a commit" >&2
   exit 1
 fi
 
@@ -72,10 +77,14 @@ if [[ "$assets" != "$expected_assets" ]]; then
   echo "error: expected quick release assets '$expected_assets', found '$assets'" >&2
   exit 1
 fi
+if [[ "$body_commit" != "$tag_commit" ]]; then
+  echo "error: debug-latest tag commit $tag_commit does not match release body commit $body_commit" >&2
+  exit 1
+fi
 if [[ "$body_commit" != "$commit" ]]; then
   echo "warning: a newer quick-build advanced debug-latest to commit $body_commit (watched run commit: $commit; target: '${target_commit:-unknown}')" >&2
 else
-  log "Verified debug-latest body commit $commit"
+  log "Verified debug-latest tag and body commit $commit"
 fi
 
 log "Done. Debug APK and Pebble watchapp PBW published at:"

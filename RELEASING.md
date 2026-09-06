@@ -25,8 +25,10 @@ If you just want an installable APK to sideload and test, without waiting for
 the full test/lint/screenshot-test/watchapp/versioning pipeline, use the
 `quick-build` workflow in `.github/workflows/quick-build.yaml`:
 
-1. Open **Actions → quick-build → Run workflow**, pick your branch, and start
-   it.
+1. Open **Actions → quick-build → Run workflow**, pick your branch, and fill
+   the required `quick_release_id` input with a unique value before starting
+   it. Alternatively, run `make quick-release`, which generates the unique
+   value automatically.
 2. It builds the Android debug APK and Pebble watchapp PBW — no tests, no lint,
    and no versioning.
 3. Download the Android APK and Pebble PBW from the run's **Artifacts** section:

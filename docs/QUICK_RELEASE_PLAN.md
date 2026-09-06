@@ -34,9 +34,11 @@ easy to grab as a real release, without being confused for one.
 
 ### Tagging strategy
 
-Use a single rolling tag, e.g. `debug-latest`, updated in place on every run
-(`allowUpdates: true`, `removeArtifacts: true` in `ncipollo/release-action`,
-same action already used by `develop-build`). Rationale:
+Use a single rolling tag, e.g. `debug-latest`, updated in place on every run.
+After both builds succeed, the workflow explicitly force-moves that tag to
+`github.sha` before `ncipollo/release-action` runs. The release action keeps
+`allowUpdates: true` and `removeArtifacts: true` (same action already used by
+`develop-build`). Rationale:
 
 - One predictable URL
   (`https://github.com/<owner>/<repo>/releases/tag/debug-latest`) to
@@ -45,7 +47,8 @@ same action already used by `develop-build`). Rationale:
 - Explicitly **not** a substitute for reproducible/traceable releases — the
   release body will record the branch name and commit SHA it was built from,
   so it's still traceable to a specific commit even though the tag itself
-  moves.
+  moves. The explicit tag move ensures the resolved tag, release body, and
+  built commit remain aligned.
 
 If we later want to keep a history of quick builds instead of a single rolling
 one, switch to `debug-<run_number>-<short_sha>` and skip `allowUpdates`. Not
@@ -77,7 +80,17 @@ different version or the `@v1` floating tag.
    ```
 
 3. Add the Pebble SDK setup and watchapp build before the artifact uploads.
-4. At the very end of the `steps:` list, publish both outputs:
+4. After the APK and PBW builds/uploads succeed, move `debug-latest` to the
+   built commit:
+
+   ```yaml
+         - name: Move rolling quick-build tag
+           run: |
+             git tag -f debug-latest "${{ github.sha }}"
+             git push --force origin refs/tags/debug-latest
+   ```
+
+5. At the very end of the `steps:` list, publish both outputs:
 
    ```yaml
          - name: Publish quick build as a prerelease
@@ -100,7 +113,7 @@ different version or the `@v1` floating tag.
              generateReleaseNotes: false
    ```
 
-5. Save the file. Do not change any other workflow behavior.
+6. Save the file. Do not change any other workflow behavior.
 
 The manual dispatch requires a `quick_release_id` string input. The run name
 includes that id so callers can correlate a dispatch with its run:
@@ -194,6 +207,11 @@ jobs:
           path: mobile/app/build/outputs/apk/debug/catapult-mobile.apk
           retention-days: 14
 
+      - name: Move rolling quick-build tag
+        run: |
+          git tag -f debug-latest "${{ github.sha }}"
+          git push --force origin refs/tags/debug-latest
+
       - name: Publish quick build as a prerelease
         uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         env:
@@ -235,14 +253,20 @@ both quick-build artifacts.
    `Quick debug build (<branch>, <unique-id>)`.
 2. Wait for that run to finish:
    `gh run watch <run-id> --repo <owner>/<repo> --exit-status`
-3. Confirm the prerelease exists and has exactly two assets:
+3. Confirm the rolling tag resolves to the commit recorded in the release body:
+   `gh api repos/<owner>/<repo>/commits/debug-latest --jq .sha` and
+   `gh release view debug-latest --repo <owner>/<repo> --json body`.
+   Normally both must equal the dispatched commit; if a newer run wins the
+   documented race, the tag and body must still equal each other at that
+   newer commit.
+4. Confirm the prerelease exists and has exactly two assets:
    `gh release view debug-latest --repo <owner>/<repo>`
    — check the output shows `prerelease: true`, one `.apk` asset, and one
    `.pbw` asset.
-4. Run the workflow a second time (any branch) and repeat step 3 — confirm
+5. Run the workflow a second time (any branch) and repeat step 4 — confirm
    the asset was replaced, not duplicated, and the release body's commit SHA
    changed to match the new run.
-5. Confirm the "Latest release" shown at
+6. Confirm the "Latest release" shown at
    `https://github.com/<owner>/<repo>/releases` is still the last proper
    `develop-build` version (e.g. `0.90`), **not** `debug-latest` — this is
    what "prerelease" is for. If `debug-latest` shows up as "Latest", the
