@@ -54,7 +54,7 @@ needed for the current use case (test on my phone right after pushing).
 ### Workflow changes (`.github/workflows/quick-build.yaml`)
 
 The existing trigger, Android debug build, and APK artifact upload remain.
-The workflow also installs the pinned Pebble SDK, builds the watchapp, and
+The workflow also installs the latest Pebble SDK, builds the watchapp, and
 publishes both outputs. Use `ncipollo/release-action` pinned to
 the **exact same commit SHA already used in this repo**
 (`.github/workflows/develop.yaml` line ~262:
@@ -102,16 +102,41 @@ different version or the `@v1` floating tag.
 
 5. Save the file. Do not change any other workflow behavior.
 
+The manual dispatch requires a `quick_release_id` string input. The run name
+includes that id so callers can correlate a dispatch with its run:
+
+```yaml
+run-name: "Quick debug build (${{ github.ref_name }}, ${{ inputs.quick_release_id }})"
+on:
+  workflow_dispatch:
+    inputs:
+      quick_release_id:
+        required: true
+        type: string
+```
+
+The workflow uses global `concurrency.group: quick-build` with
+`cancel-in-progress: false`. GitHub keeps one run in progress and one pending
+run; a newer pending run can replace the older pending run. This is
+latest-pending-wins, not an unbounded queue.
+
 #### Full resulting file (for reference / sanity check)
 
-For reference, the relevant resulting workflow includes the pinned Pebble SDK
+For reference, the relevant resulting workflow includes the latest Pebble SDK
 setup and publishes both the Android APK and Pebble PBW:
 
 ```yaml
 name: quick-build
-run-name: "Quick debug build (${{ github.ref_name }})"
+run-name: "Quick debug build (${{ github.ref_name }}, ${{ inputs.quick_release_id }})"
 on:
   workflow_dispatch:
+    inputs:
+      quick_release_id:
+        description: "Unique id used to correlate this dispatch with its run"
+        required: true
+        type: string
+# GitHub keeps one running run plus one pending run; a newer pending run can
+# replace the older pending run. This is latest-pending-wins, not an unbounded queue.
 concurrency:
   group: quick-build
   cancel-in-progress: false
@@ -144,7 +169,7 @@ jobs:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.14'
-      - name: Install Pebble SDK
+      - name: Install latest Pebble SDK
         run: uv tool install pebble-tool && (pebble sdk install latest || true)
       - name: Enable Gradle remote build cache
         uses: burrunan/gradle-cache-action@663fbad34e03c8f12b27f4999ac46e3d90f87eca

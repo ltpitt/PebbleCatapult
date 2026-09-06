@@ -1,7 +1,14 @@
 name: quick-build
-run-name: "Quick debug build (${{ github.ref_name }})"
+run-name: "Quick debug build (${{ github.ref_name }}, ${{ inputs.quick_release_id }})"
 on:
   workflow_dispatch:
+    inputs:
+      quick_release_id:
+        description: "Unique id used to correlate this dispatch with its run"
+        required: true
+        type: string
+# GitHub keeps one running run plus one pending run; a newer pending run can
+# replace the older pending run. This is latest-pending-wins, not an unbounded queue.
 concurrency:
   group: quick-build
   cancel-in-progress: false

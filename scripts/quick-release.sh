@@ -13,8 +13,9 @@ if [[ "$branch" == "HEAD" ]]; then
 fi
 commit="$(git rev-parse HEAD)"
 dispatch_epoch="$(date +%s)"
-log "Dispatching quick-build on branch '$branch' at $commit ($repo)"
-gh workflow run quick-build --repo "$repo" --ref "$branch"
+dispatch_id="$(date +%s)-$$-$RANDOM"
+log "Dispatching quick-build on branch '$branch' at $commit ($repo), id $dispatch_id"
+gh workflow run quick-build --repo "$repo" --ref "$branch" -f quick_release_id="$dispatch_id"
 
 log "Waiting for the run to appear..."
 run_id=""
@@ -26,10 +27,11 @@ for attempt in {1..30}; do
       --event workflow_dispatch \
       --commit "$commit" \
       --limit 100 \
-      --json databaseId,headSha,createdAt |
-      jq -r --arg commit "$commit" --argjson dispatch_epoch "$dispatch_epoch" '
+      --json databaseId,headSha,createdAt,displayTitle |
+      jq -r --arg commit "$commit" --arg dispatch_id "$dispatch_id" --argjson dispatch_epoch "$dispatch_epoch" '
         map(select(
           .headSha == $commit and
+          ((.displayTitle // "") | contains($dispatch_id)) and
           ((.createdAt | fromdateiso8601) >= $dispatch_epoch)
         ))
         | sort_by([.createdAt, .databaseId])
@@ -65,7 +67,7 @@ if [[ "$assets" != "$expected_assets" ]]; then
   echo "error: expected quick release assets '$expected_assets', found '$assets'" >&2
   exit 1
 fi
-if [[ "$target_commit" != "$commit" && "$body_commit" != "$commit" ]]; then
+if [[ "$body_commit" != "$commit" ]]; then
   echo "error: debug-latest does not target current commit $commit (target: '${target_commit:-unknown}', body: '${body_commit:-unknown}')" >&2
   exit 1
 fi
