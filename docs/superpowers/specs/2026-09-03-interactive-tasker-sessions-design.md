@@ -23,6 +23,11 @@ The feature extends the existing versioned AppMessage protocol rather than
 creating a separate companion app or encoding transient interactions in
 buckets.
 
+All watch screens in this feature must start from the closest matching example
+in the [official Pebble UI patterns repository](https://github.com/pebble-examples/ui-patterns);
+the examples lead the layout, typography, colors, spacing, and interaction
+design.
+
 - **Tasker plugin action** starts a session with a request type, title, and
   payload, waits asynchronously, and exposes the result variables defined in the
   [result contract](../reference/protocol-and-results.md#result-contract),

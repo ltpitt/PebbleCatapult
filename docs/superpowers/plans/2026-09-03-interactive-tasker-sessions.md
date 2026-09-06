@@ -6,6 +6,8 @@
 
 **Architecture:** Add a small, versioned request/response protocol beside bucket synchronization. A phone-side session manager owns one request at a time and bridges the watch result to a waiting Tasker action; the watch exposes reusable list and confirmation windows without knowing about Tasker.
 
+**UI rule:** Start every watch screen from the closest matching example in the [official Pebble UI patterns repository](https://github.com/pebble-examples/ui-patterns). Its native layout, typography, colors, spacing, and interaction patterns lead the implementation.
+
 **Tech Stack:** Kotlin coroutines, Android Tasker plugin APIs already used in `mobile/tasker`, Rebble PebbleKit2/AppMessage, Pebble C SDK, JUnit/Kotlin test fixtures, Gradle.
 
 ---

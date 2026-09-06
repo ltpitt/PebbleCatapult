@@ -9,6 +9,14 @@ The wire-level details of each shipped packet live in the repository-root
 [`protocol.md`](../../../protocol.md); this document owns the *allocation table*
 and the cross-cutting contracts.
 
+## Pebble UI rule
+
+Every watch UI change must start from the closest matching example in the
+[official Pebble UI patterns repository](https://github.com/pebble-examples/ui-patterns).
+Use its layout, native layer types, typography, colors, spacing, and interaction
+patterns as the baseline; adapt only the data and lifecycle behavior required by
+Catapult. This rule applies to every implementation plan and screen variant.
+
 ## Gesture vocabulary
 
 Interactive screens use exactly three gestures. No third "multi-click" tier

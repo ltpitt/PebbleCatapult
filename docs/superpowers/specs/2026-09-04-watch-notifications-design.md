@@ -15,6 +15,11 @@ existing PebbleKit 2 connection. The watch renders a native notification
 window, vibrates according to the request, and dismisses it with Back or
 Select.
 
+The notification window must start from the closest matching example in the
+[official Pebble UI patterns repository](https://github.com/pebble-examples/ui-patterns);
+its native layout, typography, colors, spacing, and animation lead the
+implementation.
+
 The watch returns to the normal Catapult screen automatically after the
 requested duration. Duration is bounded and has a safe default; a duration of
 zero means no automatic dismissal. Notifications are fire-and-forget: Tasker

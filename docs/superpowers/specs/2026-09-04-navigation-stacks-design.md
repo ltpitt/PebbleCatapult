@@ -20,6 +20,10 @@ terminal result completes the Tasker action; `back` on the root screen returns
 cancellation, while `back` on a deeper screen pops one level
 (`SCREEN_POP`, non-terminal).
 
+Every screen rendered by the stack must start from the closest matching example
+in the [official Pebble UI patterns repository](https://github.com/pebble-examples/ui-patterns);
+the examples lead visual and interaction decisions.
+
 Screen requests use typed variants for `list`, `text`, `confirmation`, and
 `quick` actions. The watch owns rendering and navigation gestures, while the
 phone owns the authoritative stack and can send an explicit reset/cancel

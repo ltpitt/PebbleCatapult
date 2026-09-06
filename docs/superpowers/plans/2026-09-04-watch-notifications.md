@@ -6,6 +6,8 @@
 
 **Architecture:** The Tasker action validates title/body/style/duration and delegates to the active `WatchAppConnection`. A typed phone-to-watch notification packet uses the existing PebbleKit 2 queue and protocol negotiation, but remains separate from interactive sessions. The watch renders a dedicated native window, vibrates once, and either dismisses on Back/Select or returns to the previous screen when its bounded timer expires.
 
+**UI rule:** Start the notification window from the closest matching example in the [official Pebble UI patterns repository](https://github.com/pebble-examples/ui-patterns). Its native layout, typography, colors, spacing, and animation lead the implementation.
+
 **Tech Stack:** Kotlin, Android Tasker plugin APIs, PebbleKit 2, Kotlin test fixtures, Pebble C SDK, CMake, existing AppMessage protocol.
 
 ---

@@ -15,6 +15,11 @@ secondary action is available through `long_select`. A text body may include an
 optional live-clock token that the watch renders as the current time and
 refreshes each minute.
 
+The watch UI must begin from the closest matching example in the [official
+Pebble UI patterns repository](https://github.com/pebble-examples/ui-patterns).
+Its native layout, typography, colors, spacing, and interaction behavior lead
+the implementation.
+
 The watch returns the selected action and session result through the shared
 [result contract](../reference/protocol-and-results.md#result-contract),
 including `%catapult_result_action`. Packet IDs and the session model come from

@@ -14,6 +14,11 @@ labels and sends a `SCREEN_ACTION_RESULT` (packet 14) carrying the action ID and
 gesture kind; `back` cancels. Empty button slots are disabled and are not
 selectable.
 
+The watch UI must begin from the closest matching example in the [official
+Pebble UI patterns repository](https://github.com/pebble-examples/ui-patterns).
+Its native layout, typography, colors, spacing, and interaction behavior lead
+the implementation.
+
 The phone exposes the same
 [result contract](../reference/protocol-and-results.md#result-contract) as list
 actions, including the button's action ID and gesture kind. Protocol version
