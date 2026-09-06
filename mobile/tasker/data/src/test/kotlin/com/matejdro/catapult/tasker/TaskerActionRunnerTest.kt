@@ -1,6 +1,7 @@
 package com.matejdro.catapult.tasker
 
 import android.os.Bundle
+import android.content.Intent
 import com.matejdro.catapult.actionlist.api.CatapultAction
 import com.matejdro.catapult.actionlist.test.FakeCatapultActionRepository
 import com.matejdro.catapult.bluetooth.FakePebbleInfoRetriever
@@ -46,6 +47,19 @@ class TaskerActionRunnerTest {
       scope.virtualTimeProvider(),
       interactiveManager,
    )
+
+   @Test
+   fun `Extract configured action bundle from Tasker fire intent`() {
+      val configured = Bundle().apply {
+         putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
+      }
+      val intent = Intent().apply {
+         putExtra(TaskerPluginConstants.EXTRA_BUNDLE, configured)
+         putString(BundleKeys.ACTION, "WRONG_OUTER_ACTION")
+      }
+
+      intent.taskerActionBundle() shouldBe configured
+   }
 
    private class RecordingInteractiveSessionManager : InteractiveSessionManager {
       val requests = mutableListOf<InteractiveTaskerRequest>()

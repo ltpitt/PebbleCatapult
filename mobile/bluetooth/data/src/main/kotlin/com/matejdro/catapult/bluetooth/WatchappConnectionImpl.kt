@@ -87,16 +87,19 @@ class WatchappConnectionImpl(
    }
 
    override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
+      logcat { "Notification request received: title='$title', bodyLength=${body.length}, vibration=$vibration, durationMs=$durationMs" }
       val style = WatchNotificationMessage.Vibration.entries.getOrNull(vibration)
          ?: throw IllegalArgumentException("Invalid vibration value")
       sendNotification(WatchNotificationMessage.Show(title, body, style, durationMs))
    }
 
    override suspend fun sendNotification(notification: WatchNotificationMessage.Show) {
+      logcat { "Waiting for watch protocol before sending notification" }
       withTimeout(NOTIFICATION_SEND_TIMEOUT) {
          val limit = watchReady.await()
          if (!watchProtocolValid || limit <= 0) throw WatchConnectionUnavailableException()
          sendNotification(notification.toPacket(limit))
+         logcat { "Notification packet queued for watch" }
       }
    }
 

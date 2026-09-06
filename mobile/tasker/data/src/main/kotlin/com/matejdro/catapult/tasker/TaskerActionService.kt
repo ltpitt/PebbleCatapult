@@ -56,8 +56,13 @@ class TaskerActionService : Service() {
 
       coroutineScope.launch {
          try {
-            val result = taskerRunner.run(intent.extras ?: Bundle())
-            logcat { "Run finished" }
+            val actionBundle = intent.taskerActionBundle()
+            logcat {
+               "Running Tasker action '${actionBundle.getString(BundleKeys.ACTION) ?: "<missing>"}' " +
+                  "(configured bundle=${intent.hasExtra(TaskerPluginConstants.EXTRA_BUNDLE)})"
+            }
+            val result = taskerRunner.run(actionBundle)
+            logcat { "Tasker action finished: ${result ?: "fire-and-forget"}" }
 
             val taskerResult = result?.toTaskerBundle()
             val resultCode =
@@ -81,6 +86,7 @@ class TaskerActionService : Service() {
             )
             throw e
          } catch (e: Exception) {
+            logcat { "Tasker action failed: ${e.message ?: e::class.simpleName}" }
             errorReporter.report(e)
             TaskerPlugin.Setting.signalFinish(
                this@TaskerActionService,
@@ -125,6 +131,9 @@ class TaskerActionService : Service() {
       )
    }
 }
+
+internal fun Intent.taskerActionBundle(): Bundle =
+   getBundleExtra(TaskerPluginConstants.EXTRA_BUNDLE) ?: extras ?: Bundle()
 
 private fun failureBundle(message: String) = Bundle().apply {
    putString("%catapult_status", "failed")

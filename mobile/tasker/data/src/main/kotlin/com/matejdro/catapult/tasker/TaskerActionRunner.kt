@@ -36,6 +36,7 @@ class TaskerActionRunner(
    suspend fun run(bundle: Bundle): InteractiveTaskerResult? {
       val actionName = bundle.getString(BundleKeys.ACTION) ?: error("Missing action from bundle")
       val action = enumValueOf<TaskerAction>(actionName)
+      logcat { "Dispatching Tasker action $action" }
 
       return when (action) {
          TaskerAction.TOGGLE_ACTIONS -> {
@@ -85,6 +86,11 @@ class TaskerActionRunner(
    private suspend fun runNotification(bundle: Bundle): InteractiveTaskerResult {
       val request = NotificationRequest.fromBundle(bundle)
       validateNotification(request)
+      logcat {
+         "Sending watch notification titleBytes=${request.title.toByteArray(Charsets.UTF_8).size}, " +
+            "bodyBytes=${request.body.toByteArray(Charsets.UTF_8).size}, " +
+            "vibration=${request.vibration}, durationMs=${request.durationMs}"
+      }
       try {
          interactiveSessionManager.sendNotification(
             title = request.title,
@@ -98,6 +104,7 @@ class TaskerActionRunner(
             initCause(e)
          }
       }
+      logcat { "Watch notification dispatched successfully" }
       return InteractiveTaskerResult.Success
    }
 

@@ -113,12 +113,14 @@ class InteractiveSessionManagerImpl(
          }
       }
       if (session != null) {
+         logcat { "Replacing interactive session ${session.id} with watch notification" }
          cancelSessionIgnoringFailures(session, INTERACTIVE_SESSION_REPLACED_REASON)
       }
       // Notifications have no watch selector, so use the connected watch with the lowest ID.
       // Sorting avoids depending on connection/map insertion order when multiple watches are connected.
       var sender = synchronized(senders) { senders.entries.minByOrNull { it.key }?.value }
       if (sender == null) {
+         logcat { "No watch connection for notification; starting Catapult watchapp" }
          startWatchapp?.invoke() ?: error("Watch connection is unavailable")
          withTimeout(NOTIFICATION_CONNECTION_TIMEOUT_MS) {
             while (sender == null) {
@@ -128,6 +130,7 @@ class InteractiveSessionManagerImpl(
          }
       }
       val notificationSender = sender ?: error("Watch connection is unavailable")
+      logcat { "Dispatching notification to connected watch" }
       notificationSender.sendNotification(title, body, vibration, durationMs)
    }
 
