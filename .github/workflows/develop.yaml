@@ -99,7 +99,12 @@ jobs:
           else
             echo "BUILD_WATCH=true" >> $GITHUB_ENV
           fi
-          
+
+          # Keep phone and watch artifacts aligned so a release can always be
+          # installed as a compatible pair.
+          echo "BUILD_MOBILE=true" >> $GITHUB_ENV
+          echo "BUILD_WATCH=true" >> $GITHUB_ENV
+            
           echo "$VERSION" > version.txt
         env:
           VERSION_BUMP: "${{ steps.version-check.outputs.version }}"
