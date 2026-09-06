@@ -1,10 +1,17 @@
 name: quick-build
-run-name: "Quick debug build (${{ github.ref_name }})"
+run-name: "Quick debug build (${{ github.ref_name }}, ${{ inputs.quick_release_id }})"
 on:
   workflow_dispatch:
+    inputs:
+      quick_release_id:
+        description: "Unique id used to correlate this dispatch with its run"
+        required: true
+        type: string
+# GitHub keeps one running run plus one pending run; a newer pending run can
+# replace the older pending run. This is latest-pending-wins, not an unbounded queue.
 concurrency:
-  group: quick-build-${{ github.ref }}
-  cancel-in-progress: true
+  group: quick-build
+  cancel-in-progress: false
 jobs:
   build-debug-apk:
     runs-on: "ubuntu-latest"
@@ -30,6 +37,16 @@ jobs:
           distribution: temurin
           cache: gradle
       - uses: android-actions/setup-android@7c5672355aaa8fde5f97a91aa9a99616d1ace6bc
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      # The Pebble SDK currently requires Python 3.13.
+      - name: Set up Python 3.13 for Pebble SDK
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.13'
+      # Sometimes SDK installation exits with exit code 1, but still succeeds.
+      - name: Install Pebble SDK
+        run: "uv tool install pebble-tool --python 3.13 && (pebble sdk install latest || true)"
       - name: Enable Gradle remote build cache
         uses: burrunan/gradle-cache-action@663fbad34e03c8f12b27f4999ac46e3d90f87eca
         with:
@@ -38,20 +55,32 @@ jobs:
           read-only: true
           build-root-directory: mobile
 
-      # Build only the debug APK. No lint, no tests, no screenshot tests,
-      # no watchapp build, no versioning/tagging, no GitHub Release. This is
-      # meant to give a quick installable APK to try on a phone, not a
-      # release candidate. Use the "develop-build" workflow for a proper,
-      # fully-tested and signed release.
+      # Build the debug APK and watchapp. No lint, no tests, no screenshot
+      # tests, or versioning. This is a quick convenience release, not a
+      # release candidate. Use "develop-build" for a proper, fully-tested
+      # and signed release.
       - name: Assemble debug APK
         run: "./gradlew :app:assembleDebug"
         working-directory: mobile
+
+      - name: Build watchapp
+        run: pebble build && mv build/watch.pbw build/catapult-watchapp.pbw
+        working-directory: watch
 
       - name: Upload debug APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: catapult-mobile-debug-apk
           path: mobile/app/build/outputs/apk/debug/catapult-mobile.apk
+          retention-days: 14
+
+      - name: Upload quick-build artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: catapult-quick-build
+          path: |
+            mobile/app/build/outputs/apk/debug/catapult-mobile.apk
+            watch/build/catapult-watchapp.pbw
           retention-days: 14
 
       - name: Publish quick build as a prerelease
@@ -67,8 +96,16 @@ jobs:
             Branch: `${{ github.ref_name }}`
             Commit: `${{ github.sha }}`
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          artifacts: "mobile/app/build/outputs/apk/debug/catapult-mobile.apk"
+          artifacts: "mobile/app/build/outputs/apk/debug/catapult-mobile.apk,watch/build/catapult-watchapp.pbw"
           prerelease: true
           allowUpdates: true
           removeArtifacts: true
           generateReleaseNotes: false
+
+      # Publish the release first so a failed publication leaves the previous
+      # tag/release pair intact. Only after successful publication, force-move
+      # debug-latest to the commit represented by the new release.
+      - name: Move rolling quick-build tag
+        run: |
+          git tag -f debug-latest "${{ github.sha }}"
+          git push --force origin refs/tags/debug-latest

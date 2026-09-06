@@ -31,6 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.airbnb.android.showkase.annotation.ShowkaseComposable
+import com.matejdro.catapult.navigation.keys.LogReaderScreenKey
 import com.matejdro.catapult.navigation.keys.OnboardingKey
 import com.matejdro.catapult.navigation.keys.ToolsScreenKey
 import com.matejdro.catapult.ui.components.ErrorAlertDialog
@@ -60,6 +61,7 @@ class ToolsScreen(
             appVersion = appVersion,
             loggingTransmissionState = logSaveStatus,
             openPermissions = { navigator.navigateTo(OnboardingKey) },
+            openLogReader = { navigator.navigateTo(LogReaderScreenKey) },
             startLogSaving = viewModel::getLogs,
             notifyLogIntentSent = viewModel::resetLog,
          )
@@ -72,6 +74,7 @@ private fun ToolsScreenContent(
    appVersion: String,
    loggingTransmissionState: Outcome<Uri?>?,
    openPermissions: () -> Unit,
+   openLogReader: () -> Unit,
    startLogSaving: () -> Unit,
    notifyLogIntentSent: () -> Unit,
 ) {
@@ -117,6 +120,10 @@ private fun ToolsScreenContent(
          }
       }
 
+      item {
+         ToolButton(onClick = openLogReader, icon = R.drawable.logs, text = R.string.read_today_logs)
+      }
+
       item(span = { GridItemSpan(maxLineSpan) }) {
          Text(
             stringResource(R.string.version, appVersion),
@@ -152,6 +159,7 @@ internal fun ToolsScreenPreview() {
          appVersion = "1.0.0-alpha07",
          loggingTransmissionState = Outcome.Success(null),
          openPermissions = {},
+         openLogReader = {},
          startLogSaving = {}
       ) {}
    }

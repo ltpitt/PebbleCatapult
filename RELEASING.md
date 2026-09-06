@@ -25,15 +25,20 @@ If you just want an installable APK to sideload and test, without waiting for
 the full test/lint/screenshot-test/watchapp/versioning pipeline, use the
 `quick-build` workflow in `.github/workflows/quick-build.yaml`:
 
-1. Open **Actions → quick-build → Run workflow**, pick your branch, and start
-   it.
-2. It only runs `:app:assembleDebug` — no tests, no lint, no watchapp build,
-   no versioning, no GitHub Release.
-3. Download the APK from the run's **Artifacts** section
-   (`catapult-mobile-debug-apk`) and sideload it.
+1. Open **Actions → quick-build → Run workflow**, pick your branch, and fill
+   the required `quick_release_id` input with a unique value before starting
+   it. Alternatively, run `make quick-release`, which generates the unique
+   value automatically.
+2. It builds the Android debug APK and Pebble watchapp PBW — no tests, no lint,
+   and no versioning.
+3. Download the Android APK and Pebble PBW from the run's **Artifacts** section:
+   `catapult-mobile-debug-apk` contains only the Android APK, while
+   `catapult-quick-build` contains both the Android APK and Pebble PBW. Both
+   are also available from the `debug-latest` prerelease.
 
 This build is signed with the debug key. It is published as the rolling
-`debug-latest` **prerelease** on GitHub (overwritten on every run) — see
+`debug-latest` **prerelease** on GitHub (overwritten on every run), containing
+both the Android debug APK and Pebble watchapp PBW — see
 `https://github.com/ltpitt/PebbleCatapult/releases/tag/debug-latest`. It is
 not a substitute for the full `develop-build` release below.
 

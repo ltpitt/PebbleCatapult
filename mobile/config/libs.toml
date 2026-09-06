@@ -6,6 +6,7 @@ androidGradleCacheFix = "3.0.3"
 androidGradlePlugin = "8.13.2"
 androidx-activity-compose = "1.13.0"
 androidx-compose-material3 = "1.4.0"
+androidx-compose-material-icons = "1.7.8"
 androidx-compose-runtime = "1.11.0"
 androidx-core = "1.18.0"
 androidx-core-splashscreen = "1.2.0"
@@ -58,6 +59,7 @@ android-securityLints = { module = "com.android.security.lint:lint", version.ref
 androidGradleCacheFix = { module = "org.gradle.android.cache-fix:org.gradle.android.cache-fix.gradle.plugin", version.ref = "androidGradleCacheFix" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity-compose" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "androidx-compose-material3" }
+androidx-compose-material-icons = { module = "androidx.compose.material:material-icons-extended", version.ref = "androidx-compose-material-icons" }
 androidx-compose-material3-sizeClasses = { module = "androidx.compose.material3:material3-window-size-class", version.ref = "androidx-compose-material3" }
 androidx-compose-runtime-annotation = { module = "androidx.compose.runtime:runtime-annotation", version.ref = "androidx-compose-runtime" }
 androidx-compose-ui = { module = "androidx.compose.ui:ui", version.ref = "androidx-compose-runtime" }
