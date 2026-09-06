@@ -16,5 +16,12 @@ run_id="$(gh run list --repo "$repo" --workflow=quick-build --branch "$branch" -
 log "Watching run $run_id"
 gh run watch "$run_id" --repo "$repo" --exit-status
 
-log "Done. Debug APK published at:"
+assets="$(gh release view debug-latest --repo "$repo" --json assets --jq '[.assets[].name] | sort | join(",")')"
+expected_assets="catapult-mobile.apk,catapult-watchapp.pbw"
+if [[ "$assets" != "$expected_assets" ]]; then
+  echo "error: expected quick release assets '$expected_assets', found '$assets'" >&2
+  exit 1
+fi
+
+log "Done. Debug APK and Pebble watchapp PBW published at:"
 echo "  https://github.com/$repo/releases/tag/debug-latest"

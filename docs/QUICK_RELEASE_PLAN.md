@@ -7,9 +7,10 @@ ever needs to be reconstructed or reviewed. The "Implementation steps" and
 
 ## Problem
 
-`quick-build.yaml` (added to fix the release pipeline in this fork) already
-builds `:app:assembleDebug` fast, with no lint/tests/watchapp/versioning. Its
-only output today is a workflow **artifact**, which:
+`quick-build.yaml` (added to fix the release pipeline in this fork) builds
+`:app:assembleDebug` and the Pebble watchapp fast, with no
+lint/tests/versioning. Its outputs are available as workflow **artifacts** and
+as assets on the rolling `debug-latest` prerelease, which:
 
 - Expires (default 90 days) and needs a GitHub login + the Actions UI to
   download.
@@ -52,9 +53,9 @@ needed for the current use case (test on my phone right after pushing).
 
 ### Workflow changes (`.github/workflows/quick-build.yaml`)
 
-Everything about the existing workflow stays the same (trigger, build step,
-artifact upload). Only two things are added: a `permissions` block on the
-job, and one new step at the end. Use `ncipollo/release-action` pinned to
+The existing trigger, Android debug build, and APK artifact upload remain.
+The workflow also installs the pinned Pebble SDK, builds the watchapp, and
+publishes both outputs. Use `ncipollo/release-action` pinned to
 the **exact same commit SHA already used in this repo**
 (`.github/workflows/develop.yaml` line ~262:
 `339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0`) — do not use a
@@ -75,8 +76,8 @@ different version or the `@v1` floating tag.
        steps:
    ```
 
-3. At the very end of the `steps:` list (after the existing `Upload debug
-   APK` step), add this new step exactly as written:
+3. Add the Pebble SDK setup and watchapp build before the artifact uploads.
+4. At the very end of the `steps:` list, publish both outputs:
 
    ```yaml
          - name: Publish quick build as a prerelease
@@ -92,20 +93,19 @@ different version or the `@v1` floating tag.
                Branch: `${{ github.ref_name }}`
                Commit: `${{ github.sha }}`
                Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-             artifacts: "mobile/app/build/outputs/apk/debug/catapult-mobile.apk"
+             artifacts: "mobile/app/build/outputs/apk/debug/catapult-mobile.apk,watch/build/catapult-watchapp.pbw"
              prerelease: true
              allowUpdates: true
              removeArtifacts: true
              generateReleaseNotes: false
    ```
 
-4. Save the file. Do not change any other step in `quick-build.yaml`.
+5. Save the file. Do not change any other workflow behavior.
 
 #### Full resulting file (for reference / sanity check)
 
-If in doubt, the whole file should end up matching this (only the last two
-blocks — `permissions` and the new step — are new; everything above them is
-unchanged from today):
+For reference, the relevant resulting workflow includes the pinned Pebble SDK
+setup and publishes both the Android APK and Pebble PBW:
 
 ```yaml
 name: quick-build
@@ -140,6 +140,12 @@ jobs:
           distribution: temurin
           cache: gradle
       - uses: android-actions/setup-android@7c5672355aaa8fde5f97a91aa9a99616d1ace6bc
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.14'
+      - name: Install Pebble SDK
+        run: uv tool install pebble-tool && (pebble sdk install latest || true)
       - name: Enable Gradle remote build cache
         uses: burrunan/gradle-cache-action@663fbad34e03c8f12b27f4999ac46e3d90f87eca
         with:
@@ -151,6 +157,10 @@ jobs:
       - name: Assemble debug APK
         run: "./gradlew :app:assembleDebug"
         working-directory: mobile
+
+      - name: Build watchapp
+        run: pebble build && mv build/watch.pbw build/catapult-watchapp.pbw
+        working-directory: watch
 
       - name: Upload debug APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -172,7 +182,7 @@ jobs:
             Branch: `${{ github.ref_name }}`
             Commit: `${{ github.sha }}`
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          artifacts: "mobile/app/build/outputs/apk/debug/catapult-mobile.apk"
+          artifacts: "mobile/app/build/outputs/apk/debug/catapult-mobile.apk,watch/build/catapult-watchapp.pbw"
           prerelease: true
           allowUpdates: true
           removeArtifacts: true
@@ -181,17 +191,16 @@ jobs:
 
 ### Documentation changes (`RELEASING.md`)
 
-In the "Quick debug build" section, replace the sentence that starts with
-"This build is signed with the debug key and is never published as a GitHub
-Release" with:
+In the "Quick debug build" section, document that the APK and PBW are both
+published in the rolling prerelease:
 
 > This build is signed with the debug key. It is published as the rolling
 > `debug-latest` **prerelease** on GitHub (overwritten on every run) — see
 > `https://github.com/<owner>/<repo>/releases/tag/debug-latest`. It is not a
 > substitute for the full `develop-build` release below.
 
-Also delete the `> Planned: ...` blockquote that currently links to this
-document (it becomes stale once this is implemented).
+The previous planned-only note is superseded now that this workflow publishes
+both quick-build artifacts.
 
 ### Verification (run these after implementing, in order)
 
@@ -199,9 +208,10 @@ document (it becomes stale once this is implemented).
    `gh workflow run quick-build --repo <owner>/<repo> --ref <branch>`
 2. Wait for it to finish:
    `gh run watch <run-id> --repo <owner>/<repo> --exit-status`
-3. Confirm the prerelease exists and has exactly one asset:
+3. Confirm the prerelease exists and has exactly two assets:
    `gh release view debug-latest --repo <owner>/<repo>`
-   — check the output shows `prerelease: true` and one `.apk` asset.
+   — check the output shows `prerelease: true`, one `.apk` asset, and one
+   `.pbw` asset.
 4. Run the workflow a second time (any branch) and repeat step 3 — confirm
    the asset was replaced, not duplicated, and the release body's commit SHA
    changed to match the new run.
