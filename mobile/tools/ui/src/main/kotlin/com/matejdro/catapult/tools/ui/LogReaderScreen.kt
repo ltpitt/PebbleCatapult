@@ -1,6 +1,7 @@
 package com.matejdro.catapult.tools.ui
 
 import android.content.Intent
+import android.content.ClipData
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -23,15 +24,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.matejdro.catapult.navigation.keys.LogReaderScreenKey
 import com.matejdro.catapult.ui.components.ProgressErrorSuccessScaffold
+import androidx.compose.ui.platform.ClipEntry
 import kotlinx.coroutines.launch
 import si.inova.kotlinova.navigation.di.ContributesScreenBinding
 import si.inova.kotlinova.navigation.instructions.goBack
@@ -66,7 +67,7 @@ private fun LogReaderScreenContent(
    logContent: si.inova.kotlinova.core.outcome.Outcome<String?>,
    goBack: () -> Unit,
 ) {
-   val clipboardManager = LocalClipboardManager.current
+   val clipboard = LocalClipboard.current
    val context = LocalContext.current
    val snackbarHostState = remember { SnackbarHostState() }
    val scope = rememberCoroutineScope()
@@ -90,8 +91,10 @@ private fun LogReaderScreenContent(
                if (!content.isNullOrEmpty()) {
                   IconButton(
                      onClick = {
-                        clipboardManager.setText(AnnotatedString(content))
                         scope.launch {
+                           clipboard.setClipEntry(
+                              ClipEntry(ClipData.newPlainText(shareLogsTitle, content))
+                           )
                            snackbarHostState.showSnackbar(logsCopiedMessage)
                         }
                      },

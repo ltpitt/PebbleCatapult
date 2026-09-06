@@ -38,6 +38,7 @@ class LogReaderViewModel(
    }
 
    fun resetLogContent() {
+      actionLogger.logAction { "LogReaderViewModel.resetLogContent()" }
       _logContent.value = Outcome.Success(null)
    }
 }
