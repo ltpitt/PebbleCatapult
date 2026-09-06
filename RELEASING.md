@@ -29,9 +29,10 @@ the full test/lint/screenshot-test/watchapp/versioning pipeline, use the
    it.
 2. It builds the Android debug APK and Pebble watchapp PBW — no tests, no lint,
    and no versioning.
-3. Download the APK and PBW from the run's **Artifacts** section
-   (`catapult-mobile-debug-apk` or `catapult-quick-build`), or from the
-   `debug-latest` prerelease.
+3. Download the Android APK and Pebble PBW from the run's **Artifacts** section:
+   `catapult-mobile-debug-apk` contains only the Android APK, while
+   `catapult-quick-build` contains both the Android APK and Pebble PBW. Both
+   are also available from the `debug-latest` prerelease.
 
 This build is signed with the debug key. It is published as the rolling
 `debug-latest` **prerelease** on GitHub (overwritten on every run), containing
