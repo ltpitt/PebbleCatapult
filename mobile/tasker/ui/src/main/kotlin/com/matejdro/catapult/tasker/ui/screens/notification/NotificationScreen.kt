@@ -35,8 +35,9 @@ import si.inova.kotlinova.navigation.screenkeys.ScreenKey
 import si.inova.kotlinova.navigation.screens.InjectNavigationScreen
 import si.inova.kotlinova.navigation.screens.Screen
 
-private const val DEFAULT_DURATION_MS = 5_000L
-private const val MAX_DURATION_MS = 300_000L
+private const val DEFAULT_DURATION_SECONDS = 10L
+private const val MAX_DURATION_SECONDS = 300L
+private const val MILLISECONDS_PER_SECOND = 1_000L
 private const val TASKER_NOTIFICATION_TIMEOUT_MS = 20_000
 private val vibrationOptions = listOf("None", "Short", "Double")
 
@@ -56,12 +57,20 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
          )
       }
       var duration by remember {
-         mutableStateOf(activity.existingData.getLong(BundleKeys.NOTIFICATION_DURATION_MS, DEFAULT_DURATION_MS).toString())
+         mutableStateOf(
+            activity.existingData
+               .getLong(
+                  BundleKeys.NOTIFICATION_DURATION_MS,
+                  DEFAULT_DURATION_SECONDS * MILLISECONDS_PER_SECOND,
+               )
+               .div(MILLISECONDS_PER_SECOND)
+               .toString()
+         )
       }
       var error by remember { mutableStateOf<String?>(null) }
 
       fun save() {
-         val durationMs = duration.toLongOrNull()
+         val durationMs = duration.toLongOrNull()?.times(MILLISECONDS_PER_SECOND)
          error = validateNotification(title, duration)
          if (error != null) return
 
@@ -101,12 +110,12 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
    }
 
    private fun validateNotification(title: String, duration: String): String? {
-      val durationMs = duration.toLongOrNull()
+      val durationSeconds = duration.toLongOrNull()
       return when {
          title.isBlank() -> "Title cannot be blank"
-         durationMs == null -> "Duration must be a whole number of milliseconds"
-         durationMs < 0 -> "Duration cannot be negative"
-         durationMs > MAX_DURATION_MS -> "Duration cannot exceed 300000 milliseconds"
+         durationSeconds == null -> "Duration must be a whole number of seconds"
+         durationSeconds < 0 -> "Duration cannot be negative"
+         durationSeconds > MAX_DURATION_SECONDS -> "Duration cannot exceed 300 seconds"
          else -> null
       }
    }
@@ -181,7 +190,7 @@ private fun NotificationScreenContent(
       OutlinedTextField(
          value = duration,
          onValueChange = setDuration,
-         label = { Text("Duration (milliseconds)") },
+         label = { Text("Duration (seconds; 0 = no dismiss)") },
          modifier = Modifier.fillMaxWidth(),
          singleLine = true,
          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

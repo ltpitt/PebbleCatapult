@@ -34,4 +34,4 @@ data class NotificationRequest(
    }
 }
 
-private const val DEFAULT_NOTIFICATION_DURATION_MS = 5_000L
+private const val DEFAULT_NOTIFICATION_DURATION_MS = 10_000L

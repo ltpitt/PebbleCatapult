@@ -46,6 +46,11 @@
         },
         {
           "type": "bitmap",
+          "name": "WARNING",
+          "file": "warning.png"
+        },
+        {
+          "type": "bitmap",
           "name": "FOLDER_ARROW",
           "file": "folder_arrow.png"
         },

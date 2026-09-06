@@ -1,5 +1,13 @@
 # Contributing
 
+## Pebble UI
+
+When adding or changing Pebble UI, start from the corresponding examples in
+[pebble-ui-patterns](https://github.com/craignicol/pebble-ui-patterns), the
+evolved fork of the official Pebble UI patterns project. Preserve its native
+layer types, element positions, sizing, colors, fonts, and animation structure;
+adapt only the application data and lifecycle behavior required by Catapult.
+
 To contribute to this project:
 
 1. Install [Git LFS](https://git-lfs.com/)

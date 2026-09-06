@@ -87,8 +87,8 @@ class TaskerActionRunnerTest {
    }
 
    @Test
-   fun `Notification duration defaults to 5000 ms and preserves explicit zero`() = scope.runTest {
-      NotificationRequest.fromBundle(Bundle()).durationMs shouldBe 5_000
+   fun `Notification duration defaults to 10000 ms and preserves explicit zero`() = scope.runTest {
+      NotificationRequest.fromBundle(Bundle()).durationMs shouldBe 10_000
 
       NotificationRequest.fromBundle(
          Bundle().apply {
