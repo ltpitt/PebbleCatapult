@@ -81,6 +81,7 @@ class TaskerActionService : Service() {
             )
             throw e
          } catch (e: Exception) {
+            logcat { "Tasker action failed: ${e::class.simpleName}: ${e.message ?: "no message"}" }
             errorReporter.report(e)
             TaskerPlugin.Setting.signalFinish(
                this@TaskerActionService,

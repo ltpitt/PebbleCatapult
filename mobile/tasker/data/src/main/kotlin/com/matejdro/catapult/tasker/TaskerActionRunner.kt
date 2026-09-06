@@ -84,6 +84,10 @@ class TaskerActionRunner(
 
    private suspend fun runNotification(bundle: Bundle): InteractiveTaskerResult {
       val request = NotificationRequest.fromBundle(bundle)
+      logcat {
+         "Tasker notification request: title='${request.title}', bodyLength=${request.body.length}, " +
+            "vibration=${request.vibration}, durationMs=${request.durationMs}"
+      }
       validateNotification(request)
       try {
          interactiveSessionManager.sendNotification(
@@ -94,10 +98,12 @@ class TaskerActionRunner(
             startWatchapp = { sender.startAppOnTheWatch(WATCHAPP_UUID) },
          )
       } catch (e: IllegalArgumentException) {
+         logcat { "Tasker notification rejected: ${e.message ?: e::class.simpleName}" }
          throw TaskerInvalidInputException(e.message ?: INVALID_NOTIFICATION_MESSAGE).apply {
             initCause(e)
          }
       }
+      logcat { "Tasker notification request completed successfully" }
       return InteractiveTaskerResult.Success
    }
 

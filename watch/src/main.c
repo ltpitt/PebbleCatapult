@@ -8,8 +8,15 @@
 
 const uint16_t PROTOCOL_VERSION = 4;
 
+static void app_focus_changed(bool in_focus)
+{
+    APP_LOG(APP_LOG_LEVEL_INFO, "App focus changed: in_focus=%d", in_focus);
+}
+
 int main(void)
 {
+    APP_LOG(APP_LOG_LEVEL_INFO, "Catapult watchapp started");
+    app_focus_service_subscribe(app_focus_changed);
     packets_init();
     bluetooth_init();
     bucket_sync_init();

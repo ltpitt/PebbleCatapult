@@ -37,6 +37,7 @@ import si.inova.kotlinova.navigation.screens.Screen
 
 private const val DEFAULT_DURATION_MS = 5_000L
 private const val MAX_DURATION_MS = 300_000L
+private const val TASKER_NOTIFICATION_TIMEOUT_MS = 20_000
 private val vibrationOptions = listOf("None", "Short", "Double")
 
 @InjectNavigationScreen
@@ -74,7 +75,8 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
                putString(TaskerPluginConstants.VARIABLE_REPLACE_KEYS, "%catapult_status")
             },
             title,
-            finish = true
+            finish = true,
+            requestedTimeoutMs = TASKER_NOTIFICATION_TIMEOUT_MS,
          )
       }
 

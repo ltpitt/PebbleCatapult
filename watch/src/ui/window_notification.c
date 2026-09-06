@@ -61,6 +61,7 @@ static void dismiss_timer(void* context)
 static void unload(Window* window)
 {
     Notification* notification = window_get_user_data(window);
+    APP_LOG(APP_LOG_LEVEL_INFO, "Notification window unloaded");
     notification_lifecycle_unload(&notification->lifecycle);
     cancel_timer(notification);
     text_layer_destroy(notification->title_layer);
@@ -87,7 +88,12 @@ void window_notification_dismiss_all(void)
 void window_notification_show(const char* title, const char* body,
                               uint8_t vibration, uint32_t duration_ms)
 {
-    if (!title || !body) return;
+    APP_LOG(APP_LOG_LEVEL_INFO, "Creating notification window duration_ms=%lu",
+            (unsigned long)duration_ms);
+    if (!title || !body) {
+        APP_LOG(APP_LOG_LEVEL_ERROR, "Cannot create notification: missing text");
+        return;
+    }
     window_notification_dismiss();
 
     Notification* notification = calloc(1, sizeof(*notification));
@@ -142,6 +148,7 @@ void window_notification_show(const char* title, const char* body,
     active = notification;
     notification_lifecycle_show(&notification->lifecycle, duration_ms);
     window_stack_push(notification->window, true);
+    APP_LOG(APP_LOG_LEVEL_INFO, "Notification window pushed");
 
     if (vibration == 1) {
         static const uint32_t short_pattern[] = { 200 };

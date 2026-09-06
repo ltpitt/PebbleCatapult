@@ -103,6 +103,7 @@ static void receive_watch_packet(const DictionaryIterator* received)
     Tuple* packet_tuple = dict_find(received, 0);
     if (!packet_tuple || packet_tuple->type != TUPLE_UINT) return;
     const uint8_t packet_id = packet_tuple->value->uint8;
+    APP_LOG(APP_LOG_LEVEL_INFO, "Received packet id=%u", packet_id);
 
     switch (packet_id)
     {
@@ -135,6 +136,8 @@ static void show_notification(const DictionaryIterator* received)
         APP_LOG(APP_LOG_LEVEL_ERROR, "Invalid notification packet");
         return;
     }
+    APP_LOG(APP_LOG_LEVEL_INFO, "Showing notification title='%s' duration_ms=%lu",
+            packet.title, (unsigned long)packet.duration_ms);
     if (interactive_session != 0) {
         interactive_send_error(interactive_session, "Interactive session replaced by notification");
     }

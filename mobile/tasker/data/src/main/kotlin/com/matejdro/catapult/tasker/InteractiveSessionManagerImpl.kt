@@ -3,6 +3,7 @@ package com.matejdro.catapult.tasker
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.binding
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
@@ -12,7 +13,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import logcat.logcat
@@ -21,6 +21,7 @@ import kotlin.time.Duration.Companion.minutes
 
 @Inject
 @ContributesBinding(AppScope::class, binding<InteractiveSessionManager>())
+@SingleIn(AppScope::class)
 class InteractiveSessionManagerImpl(
    private val timeout: Duration = 1.minutes,
 ) : InteractiveSessionManager {
@@ -41,11 +42,23 @@ class InteractiveSessionManagerImpl(
       registerSender("default", sender)
    }
    override fun registerSender(watchId: String, sender: InteractiveRequestSender) {
-      synchronized(senders) { senders[watchId] = sender }
+      val senderCount = synchronized(senders) {
+         senders[watchId] = sender
+         senders.size
+      }
+      logcat { "Watch sender registered: id=$watchId, senderCount=$senderCount" }
    }
 
    override fun unregisterSender(watchId: String, sender: InteractiveRequestSender) {
-      synchronized(senders) { if (senders[watchId] === sender) senders.remove(watchId) }
+      val removed = synchronized(senders) {
+         if (senders[watchId] === sender) {
+            senders.remove(watchId)
+            true
+         } else {
+            false
+         }
+      }
+      logcat { "Watch sender unregistered: id=$watchId, removed=$removed" }
    }
 
    override suspend fun awaitResult(request: InteractiveTaskerRequest) =
@@ -118,17 +131,37 @@ class InteractiveSessionManagerImpl(
       // Notifications have no watch selector, so use the connected watch with the lowest ID.
       // Sorting avoids depending on connection/map insertion order when multiple watches are connected.
       var sender = synchronized(senders) { senders.entries.minByOrNull { it.key }?.value }
+      logcat {
+         "Sending notification: title='$title', bodyLength=${body.length}, " +
+            "vibration=$vibration, durationMs=$durationMs, senderAvailable=${sender != null}"
+      }
       if (sender == null) {
-         startWatchapp?.invoke() ?: error("Watch connection is unavailable")
-         withTimeout(NOTIFICATION_CONNECTION_TIMEOUT_MS) {
-            while (sender == null) {
-               delay(NOTIFICATION_CONNECTION_POLL_INTERVAL_MS)
-               sender = synchronized(senders) { senders.entries.minByOrNull { it.key }?.value }
+         val launcher = startWatchapp ?: error("Watch connection is unavailable")
+         for (attempt in 0 until NOTIFICATION_START_ATTEMPTS) {
+            logcat {
+               "No watch sender available; starting watch app, " +
+                  "attempt ${attempt + 1}/$NOTIFICATION_START_ATTEMPTS; " +
+                  "waiting up to ${NOTIFICATION_CONNECTION_TIMEOUT_MS}ms"
             }
+            launcher()
+            withTimeoutOrNull(NOTIFICATION_CONNECTION_TIMEOUT_MS) {
+               while (sender == null) {
+                  delay(NOTIFICATION_CONNECTION_POLL_INTERVAL_MS)
+                  sender = synchronized(senders) { senders.entries.minByOrNull { it.key }?.value }
+               }
+            }
+            if (sender != null) break
          }
+         if (sender == null) {
+            logcat { "Watch sender did not become ready after $NOTIFICATION_START_ATTEMPTS attempts" }
+            error("Watch connection is unavailable")
+         }
+         logcat { "Watch sender became available after starting watch app" }
       }
       val notificationSender = sender ?: error("Watch connection is unavailable")
+      logcat { "Sending notification packet to watch" }
       notificationSender.sendNotification(title, body, vibration, durationMs)
+      logcat { "Notification packet sent successfully" }
    }
 
    override fun cancelActive(reason: String) {
@@ -191,3 +224,4 @@ private const val INTERACTIVE_SESSION_CANCELLED_REASON = "Interactive session ca
 private const val INTERACTIVE_SESSION_REPLACED_REASON = "Interactive session replaced by notification"
 private const val NOTIFICATION_CONNECTION_TIMEOUT_MS = 5_000L
 private const val NOTIFICATION_CONNECTION_POLL_INTERVAL_MS = 50L
+private const val NOTIFICATION_START_ATTEMPTS = 3

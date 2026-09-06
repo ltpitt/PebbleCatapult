@@ -83,7 +83,7 @@ class WatchappConnectionImpl(
    override suspend fun sendNotification(packet: PebbleDictionary) {
       val limit = watchReady.await()
       if (!watchProtocolValid || limit <= 0) throw WatchConnectionUnavailableException()
-      packetQueue.sendPacket(packet)
+      packetQueue.sendPacket(packet, treatDifferentAppAsSuccess = true)
    }
 
    override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {

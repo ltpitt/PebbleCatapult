@@ -14,6 +14,7 @@ object TaskerPluginConstants {
    const val EXTRA_BUNDLE = "com.twofortyfouram.locale.intent.extra.BUNDLE"
    const val EXTRA_ACTIVITY = "com.twofortyfouram.locale.intent.extra.ACTIVITY"
    const val VARIABLE_REPLACE_KEYS = "net.dinglisch.android.tasker.extras.VARIABLE_REPLACE_KEYS"
+   const val REQUESTED_TIMEOUT = "net.dinglisch.android.tasker.extras.REQUESTED_TIMEOUT"
    const val VARIABLES = "net.dinglisch.android.tasker.extras.VARIABLES"
    const val EXTRA_ACTION_INPUT_CLASS = "net.dinglisch.android.tasker.extras.ACTION_INPUT_CLASS"
    const val EXTRA_ACTION_RUNNER_CLASS = "net.dinglisch.android.tasker.extras.ACTION_RUNNER_CLASS"
