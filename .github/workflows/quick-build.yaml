@@ -3,7 +3,7 @@ run-name: "Quick debug build (${{ github.ref_name }})"
 on:
   workflow_dispatch:
 concurrency:
-  group: quick-build-${{ github.ref }}
+  group: quick-build
   cancel-in-progress: true
 jobs:
   build-debug-apk:
