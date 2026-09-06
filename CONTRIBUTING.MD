@@ -1,20 +1,5 @@
 # Contributing
 
-## Pebble UI
-
-When adding or changing Pebble UI, start from the corresponding examples in
-[pebble-ui-patterns](https://github.com/pebble-examples/ui-patterns), the
-official Pebble UI patterns project. Preserve its native
-layer types, element positions, sizing, colors, fonts, and animation structure;
-adapt only the application data and lifecycle behavior required by Catapult.
-
-When adding or changing Android-to-Pebble communication, use the official
-[PebbleKit Android 2](https://github.com/pebble-dev/PebbleKitAndroid2) APIs and
-documentation first. Prefer its typed `PebbleSender` operations, including
-`insertTimelinePin` for official Pebble timeline/notification experiences, over
-custom protocols or legacy companion broadcasts when the API supports the
-required behavior.
-
 To contribute to this project:
 
 1. Install [Git LFS](https://git-lfs.com/)
