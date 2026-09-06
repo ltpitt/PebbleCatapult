@@ -5,7 +5,6 @@ import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.time.LocalDate
-import kotlin.io.path.writeText
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.Test
 
