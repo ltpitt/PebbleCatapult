@@ -35,10 +35,12 @@ easy to grab as a real release, without being confused for one.
 ### Tagging strategy
 
 Use a single rolling tag, e.g. `debug-latest`, updated in place on every run.
-After both builds succeed, the workflow explicitly force-moves that tag to
-`github.sha` before `ncipollo/release-action` runs. The release action keeps
+After both builds succeed, `ncipollo/release-action` publishes the rolling
+prerelease first. Only after successful publication does the workflow explicitly
+force-move that tag to `github.sha`. The release action keeps
 `allowUpdates: true` and `removeArtifacts: true` (same action already used by
-`develop-build`). Rationale:
+`develop-build`). Publishing first ensures a failed release leaves the previous
+tag/release pair intact. Rationale:
 
 - One predictable URL
   (`https://github.com/<owner>/<repo>/releases/tag/debug-latest`) to
@@ -80,17 +82,7 @@ different version or the `@v1` floating tag.
    ```
 
 3. Add the Pebble SDK setup and watchapp build before the artifact uploads.
-4. After the APK and PBW builds/uploads succeed, move `debug-latest` to the
-   built commit:
-
-   ```yaml
-         - name: Move rolling quick-build tag
-           run: |
-             git tag -f debug-latest "${{ github.sha }}"
-             git push --force origin refs/tags/debug-latest
-   ```
-
-5. At the very end of the `steps:` list, publish both outputs:
+4. After the APK and PBW builds/uploads succeed, publish both outputs:
 
    ```yaml
          - name: Publish quick build as a prerelease
@@ -111,6 +103,18 @@ different version or the `@v1` floating tag.
              allowUpdates: true
              removeArtifacts: true
              generateReleaseNotes: false
+   ```
+
+5. After publication succeeds, force-move `debug-latest` to the built commit:
+
+   ```yaml
+         # Publish the release first so a failed publication leaves the previous
+         # tag/release pair intact. Only after successful publication, force-move
+         # debug-latest to the commit represented by the new release.
+         - name: Move rolling quick-build tag
+           run: |
+             git tag -f debug-latest "${{ github.sha }}"
+             git push --force origin refs/tags/debug-latest
    ```
 
 6. Save the file. Do not change any other workflow behavior.
@@ -178,12 +182,16 @@ jobs:
           distribution: temurin
           cache: gradle
       - uses: android-actions/setup-android@7c5672355aaa8fde5f97a91aa9a99616d1ace6bc
-      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      # The Pebble SDK currently requires Python 3.13.
+      - name: Set up Python 3.13 for Pebble SDK
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.13'
-      - name: Install latest Pebble SDK
-        run: uv tool install pebble-tool --python 3.13 && (pebble sdk install latest || true)
+      # Sometimes SDK installation exits with exit code 1, but still succeeds.
+      - name: Install Pebble SDK
+        run: "uv tool install pebble-tool --python 3.13 && (pebble sdk install latest || true)"
       - name: Enable Gradle remote build cache
         uses: burrunan/gradle-cache-action@663fbad34e03c8f12b27f4999ac46e3d90f87eca
         with:
@@ -192,6 +200,10 @@ jobs:
           read-only: true
           build-root-directory: mobile
 
+      # Build the debug APK and watchapp. No lint, no tests, no screenshot
+      # tests, or versioning. This is a quick convenience release, not a
+      # release candidate. Use "develop-build" for a proper, fully-tested
+      # and signed release.
       - name: Assemble debug APK
         run: "./gradlew :app:assembleDebug"
         working-directory: mobile
@@ -207,10 +219,14 @@ jobs:
           path: mobile/app/build/outputs/apk/debug/catapult-mobile.apk
           retention-days: 14
 
-      - name: Move rolling quick-build tag
-        run: |
-          git tag -f debug-latest "${{ github.sha }}"
-          git push --force origin refs/tags/debug-latest
+      - name: Upload quick-build artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: catapult-quick-build
+          path: |
+            mobile/app/build/outputs/apk/debug/catapult-mobile.apk
+            watch/build/catapult-watchapp.pbw
+          retention-days: 14
 
       - name: Publish quick build as a prerelease
         uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
@@ -230,6 +246,14 @@ jobs:
           allowUpdates: true
           removeArtifacts: true
           generateReleaseNotes: false
+
+      # Publish the release first so a failed publication leaves the previous
+      # tag/release pair intact. Only after successful publication, force-move
+      # debug-latest to the commit represented by the new release.
+      - name: Move rolling quick-build tag
+        run: |
+          git tag -f debug-latest "${{ github.sha }}"
+          git push --force origin refs/tags/debug-latest
 ```
 
 ### Documentation changes (`RELEASING.md`)

@@ -56,8 +56,8 @@ jobs:
           build-root-directory: mobile
 
       # Build the debug APK and watchapp. No lint, no tests, no screenshot
-      # tests, no versioning/tagging. This is a quick convenience release, not
-      # a release candidate. Use "develop-build" for a proper, fully-tested
+      # tests, or versioning. This is a quick convenience release, not a
+      # release candidate. Use "develop-build" for a proper, fully-tested
       # and signed release.
       - name: Assemble debug APK
         run: "./gradlew :app:assembleDebug"
@@ -83,11 +83,6 @@ jobs:
             watch/build/catapult-watchapp.pbw
           retention-days: 14
 
-      - name: Move rolling quick-build tag
-        run: |
-          git tag -f debug-latest "${{ github.sha }}"
-          git push --force origin refs/tags/debug-latest
-
       - name: Publish quick build as a prerelease
         uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         env:
@@ -106,3 +101,11 @@ jobs:
           allowUpdates: true
           removeArtifacts: true
           generateReleaseNotes: false
+
+      # Publish the release first so a failed publication leaves the previous
+      # tag/release pair intact. Only after successful publication, force-move
+      # debug-latest to the commit represented by the new release.
+      - name: Move rolling quick-build tag
+        run: |
+          git tag -f debug-latest "${{ github.sha }}"
+          git push --force origin refs/tags/debug-latest
