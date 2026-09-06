@@ -55,7 +55,7 @@ class TaskerActionRunnerTest {
       }
       val intent = Intent().apply {
          putExtra(TaskerPluginConstants.EXTRA_BUNDLE, configured)
-         putString(BundleKeys.ACTION, "WRONG_OUTER_ACTION")
+         putExtra(BundleKeys.ACTION, "WRONG_OUTER_ACTION")
       }
 
       intent.taskerActionBundle() shouldBe configured
