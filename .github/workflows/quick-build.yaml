@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 concurrency:
   group: quick-build
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   build-debug-apk:
     runs-on: "ubuntu-latest"

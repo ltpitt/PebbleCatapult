@@ -3,17 +3,40 @@
 # finish, and print the resulting debug-latest prerelease/asset URL.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 require_cmd gh "Install the GitHub CLI: https://cli.github.com/"
+require_cmd jq "Install jq: https://jqlang.org/download/"
 
 repo="$(gh_repo)"
 branch="$(git rev-parse --abbrev-ref HEAD)"
+if [[ "$branch" == "HEAD" ]]; then
+  echo "error: quick-release requires a branch checkout; detached HEAD cannot be dispatched" >&2
+  exit 1
+fi
 commit="$(git rev-parse HEAD)"
+dispatch_epoch="$(date +%s)"
 log "Dispatching quick-build on branch '$branch' at $commit ($repo)"
 gh workflow run quick-build --repo "$repo" --ref "$branch"
 
 log "Waiting for the run to appear..."
 run_id=""
 for attempt in {1..30}; do
-  if run_id="$(gh run list --repo "$repo" --workflow=quick-build --branch "$branch" --commit "$commit" --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId')"; then
+  if run_id="$(
+    gh run list \
+      --repo "$repo" \
+      --workflow=quick-build \
+      --event workflow_dispatch \
+      --commit "$commit" \
+      --limit 100 \
+      --json databaseId,headSha,createdAt |
+      jq -r --arg commit "$commit" --argjson dispatch_epoch "$dispatch_epoch" '
+        map(select(
+          .headSha == $commit and
+          ((.createdAt | fromdateiso8601) >= $dispatch_epoch)
+        ))
+        | sort_by([.createdAt, .databaseId])
+        | last
+        | .databaseId // empty
+      '
+  )"; then
     if [[ -n "$run_id" ]]; then
       break
     fi
