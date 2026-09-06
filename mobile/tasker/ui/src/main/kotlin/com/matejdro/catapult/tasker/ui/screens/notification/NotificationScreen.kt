@@ -9,11 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -40,7 +35,6 @@ private const val DEFAULT_DURATION_SECONDS = 10L
 private const val MAX_DURATION_SECONDS = 300L
 private const val MILLISECONDS_PER_SECOND = 1_000L
 private const val TASKER_NOTIFICATION_TIMEOUT_MS = 20_000
-private val vibrationOptions = listOf("None", "Short", "Double")
 
 @InjectNavigationScreen
 class NotificationScreen : Screen<NotificationScreenKey>() {
@@ -49,14 +43,6 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
       val activity = LocalContext.current.requireActivity() as TaskerConfigurationActivity
       var title by remember { mutableStateOf(activity.existingData.getString(BundleKeys.TITLE).orEmpty()) }
       var body by remember { mutableStateOf(activity.existingData.getString(BundleKeys.MESSAGE).orEmpty()) }
-      var vibration by remember {
-         mutableStateOf(
-            activity.existingData.getString(BundleKeys.NOTIFICATION_VIBRATION)
-               ?.replaceFirstChar { it.uppercase() }
-               ?.takeIf { it in vibrationOptions }
-               ?: "Short"
-         )
-      }
       var duration by remember {
          mutableStateOf(
             activity.existingData
@@ -84,7 +70,6 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
                putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
                putString(BundleKeys.TITLE, title)
                putString(BundleKeys.MESSAGE, body)
-               putString(BundleKeys.NOTIFICATION_VIBRATION, vibration.lowercase())
                putLong(BundleKeys.NOTIFICATION_DURATION_MS, durationMs!!)
                putString(TaskerPluginConstants.VARIABLE_REPLACE_KEYS, "%catapult_status")
             },
@@ -97,7 +82,6 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
       NotificationScreenContent(
          title = title,
          body = body,
-         vibration = vibration,
          duration = duration,
          error = error,
          setTitle = { newTitle ->
@@ -105,7 +89,6 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
             error = validateNotification(title, duration)
          },
          setBody = { body = it },
-         setVibration = { vibration = it },
          setDuration = { newDuration ->
             duration = newDuration
             error = validateNotification(title, duration)
@@ -126,21 +109,17 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NotificationScreenContent(
    title: String,
    body: String,
-   vibration: String,
    duration: String,
    error: String?,
    setTitle: (String) -> Unit,
    setBody: (String) -> Unit,
-   setVibration: (String) -> Unit,
    setDuration: (String) -> Unit,
    save: () -> Unit,
 ) {
-   var vibrationMenuExpanded by remember { mutableStateOf(false) }
    Column(
       Modifier
          .padding(16.dp)
@@ -161,41 +140,10 @@ private fun NotificationScreenContent(
          label = { Text("Body") },
          modifier = Modifier.fillMaxWidth(),
       )
-      ExposedDropdownMenuBox(
-         expanded = vibrationMenuExpanded,
-         onExpandedChange = { vibrationMenuExpanded = !vibrationMenuExpanded },
-      ) {
-         OutlinedTextField(
-            value = vibration,
-            onValueChange = {},
-            label = { Text("Vibration") },
-            modifier = Modifier
-               .fillMaxWidth()
-               .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-            readOnly = true,
-            trailingIcon = {
-               ExposedDropdownMenuDefaults.TrailingIcon(expanded = vibrationMenuExpanded)
-            },
-         )
-         ExposedDropdownMenu(
-            expanded = vibrationMenuExpanded,
-            onDismissRequest = { vibrationMenuExpanded = false },
-         ) {
-            vibrationOptions.forEach { option ->
-               DropdownMenuItem(
-                  text = { Text(option) },
-                  onClick = {
-                     setVibration(option)
-                     vibrationMenuExpanded = false
-                  },
-               )
-            }
-         }
-      }
       OutlinedTextField(
          value = duration,
          onValueChange = setDuration,
-         label = { Text("Duration (seconds; 0 = no dismiss)") },
+         label = { Text("Duration (seconds; 0 = no expiry)") },
          modifier = Modifier.fillMaxWidth(),
          singleLine = true,
          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),

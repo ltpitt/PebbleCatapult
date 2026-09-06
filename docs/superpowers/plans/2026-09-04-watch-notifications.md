@@ -2,11 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a Catapult Tasker action that sends an immediate, one-way Pebble notification with optional vibration and automatic dismissal.
+**Goal:** Add a Catapult Tasker action that sends an immediate, one-way Pebble notification through the official Pebble/Core companion.
 
-**Architecture:** The Tasker action validates title/body/style/duration and delegates to the active `WatchAppConnection`. A typed phone-to-watch notification packet uses the existing PebbleKit 2 queue and protocol negotiation, but remains separate from interactive sessions. The watch renders a dedicated native window, vibrates once, and either dismisses on Back/Select or returns to the previous screen when its bounded timer expires.
+**Architecture:** The Tasker action validates title/body/duration and uses the official PebbleKit Android 2 `PebbleSender.insertTimelinePin` API with a `GENERIC_NOTIFICATION` layout. The Pebble/Core companion owns rendering, vibration, persistence, and dismissal; the existing custom packet/window remains available for future Catapult-specific messages.
 
-**UI rule:** Start the notification window from the closest matching example in the [official Pebble UI patterns repository](https://github.com/pebble-examples/ui-patterns). Its native layout, typography, colors, spacing, and animation lead the implementation.
+**UI rule:** Official notification UI comes from the Pebble/Core companion. Any future Catapult-owned notification window must start from the closest matching example in the [official Pebble UI patterns repository](https://github.com/pebble-examples/ui-patterns).
+
+> The original packet-11 implementation steps below are superseded for
+> `SEND_NOTIFICATION`. Keep that code only as a reusable Catapult-owned dialog;
+> new notification work must use `PebbleSender.insertTimelinePin`.
 
 **Tech Stack:** Kotlin, Android Tasker plugin APIs, PebbleKit 2, Kotlin test fixtures, Pebble C SDK, CMake, existing AppMessage protocol.
 

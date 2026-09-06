@@ -8,17 +8,14 @@ integration for Catapult users.
 
 ## Design
 
-Add a `SEND_NOTIFICATION` Tasker action with title, body, optional vibration
-style, and an optional display duration. The phone validates UTF-8 byte
-limits, encodes a versioned phone-to-watch packet, and sends it through the
-existing PebbleKit 2 connection. The watch renders a native notification
-window, vibrates according to the request, and dismisses it with Back or
-Select.
+Add a `SEND_NOTIFICATION` Tasker action with title, body, and an optional
+display duration. The phone validates UTF-8 byte
+limits, then inserts a `TimelinePin` through PebbleKit Android 2 using the
+`GENERIC_NOTIFICATION` layout. The Pebble/Core companion owns the native
+notification rendering, vibration, persistence, and dismissal behavior.
 
-The notification window must start from the closest matching example in the
-[official Pebble UI patterns repository](https://github.com/pebble-examples/ui-patterns);
-its native layout, typography, colors, spacing, and animation lead the
-implementation.
+This action does not render a Catapult watchapp window. The existing packet-11
+dialog implementation remains available for future Catapult-specific messages.
 
 The watch returns to the normal Catapult screen automatically after the
 requested duration. Duration is bounded and has a safe default; a duration of
@@ -27,20 +24,17 @@ receives a dispatch success/failure status and does not wait for user input.
 
 ## Compatibility and failure handling
 
-This is separate from interactive sessions and Timeline pins. It also replaces
-AutoPebble's custom CSV vibration patterns with a bounded vibration enum (see the
-[parity matrix](../reference/autopebble-parity-matrix.md)). Old watches
-negotiate the existing protocol version and do not receive notification
-packets. A disconnected watch, unsupported packet version, oversized text, or
-failed send produces an explicit Tasker failure. When multiple watches are
-connected, the notification is sent to the connected watch with the lowest
-watch ID; this deterministic fallback preserves the existing no-selector
-semantics without adding another Tasker field.
+This uses the official Pebble timeline/notification path rather than a custom
+watchapp packet. Duration is interpreted as the timeline pin duration; zero
+creates a pin without an expiry. Vibration is controlled by the companion and
+is no longer configurable by Catapult. A missing companion app, unsupported
+timeline operation, oversized text, or failed insertion produces an explicit
+Tasker failure.
 
 ## Testing
 
-Add tests for input validation, UTF-8 limits, packet sizing, vibration and
-duration encoding, unsupported versions, and send failures. Add watch tests for
-rendering, manual dismissal, automatic dismissal, replacement by a newer
-notification, and timer cleanup. The manual acceptance test sends notifications
-with 5-second and no-timeout settings from Tasker.
+Add tests for input validation, UTF-8 limits, timeline layout construction,
+duration mapping, missing companion handling, unsupported operations, and
+insertion failures. The manual acceptance test sends notifications with
+5-second and no-expiry settings from Tasker and verifies that they appear in
+the official Pebble notification/timeline UI.

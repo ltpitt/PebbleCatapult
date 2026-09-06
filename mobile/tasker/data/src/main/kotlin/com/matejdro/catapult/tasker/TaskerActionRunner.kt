@@ -20,6 +20,7 @@ import si.inova.kotlinova.core.time.TimeProvider
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeParseException
+import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toKotlinInstant
@@ -82,6 +83,7 @@ class TaskerActionRunner(
          .coerceAtLeast(MINIMUM_INTERACTIVE_TIMEOUT_MS)
          .milliseconds
 
+   @Suppress("ThrowsCount") // Timeline insertion maps each explicit companion result
    private suspend fun runNotification(bundle: Bundle): InteractiveTaskerResult {
       val request = NotificationRequest.fromBundle(bundle)
       logcat {
@@ -89,21 +91,45 @@ class TaskerActionRunner(
             "vibration=${request.vibration}, durationMs=${request.durationMs}"
       }
       validateNotification(request)
-      try {
-         interactiveSessionManager.sendNotification(
-            title = request.title,
-            body = request.body,
-            vibration = request.vibration.ordinal,
-            durationMs = request.durationMs,
-            startWatchapp = { sender.startAppOnTheWatch(WATCHAPP_UUID) },
-         )
-      } catch (e: IllegalArgumentException) {
-         logcat { "Tasker notification rejected: ${e.message ?: e::class.simpleName}" }
-         throw TaskerInvalidInputException(e.message ?: INVALID_NOTIFICATION_MESSAGE).apply {
-            initCause(e)
+      val result = sender.insertTimelinePin(
+         WATCHAPP_UUID,
+         TimelinePin(
+            id = "catapult-notification-${UUID.randomUUID()}",
+            startTime = timeProvider.currentInstant().toKotlinInstant(),
+            duration = request.durationMs.takeIf { it > 0 }?.milliseconds,
+            layout = TimelineLayout(
+               type = TimelineLayoutType.GENERIC_NOTIFICATION,
+               title = request.title,
+               body = request.body,
+            ),
+         ),
+      )
+
+      when (result) {
+         TimelineResult.FailedNoPebbleApp -> {
+            throw TaskerInvalidInputException("Pebble companion app is not installed")
+         }
+
+         TimelineResult.FailedNoPermissions -> {
+            throw TaskerInvalidInputException("Pebble companion app cannot insert notifications")
+         }
+
+         TimelineResult.FailedUnsupportedAction -> {
+            throw TaskerInvalidInputException("Installed Pebble companion app is too old for notifications")
+         }
+
+         TimelineResult.FailedUnknownPin -> {
+            error("Received unknown pin while inserting a notification. This should never happen")
+         }
+
+         is TimelineResult.Unknown -> {
+            throw UnknownCauseException("Unknown notification error '${result.message.orEmpty()}'")
+         }
+
+         TimelineResult.Success -> {
+            logcat { "Pebble notification inserted successfully" }
          }
       }
-      logcat { "Tasker notification request completed successfully" }
       return InteractiveTaskerResult.Success
    }
 
@@ -280,4 +306,3 @@ private const val MAX_NOTIFICATION_TITLE_SIZE_BYTES = 64
 private const val MAX_NOTIFICATION_BODY_SIZE_BYTES = 128
 private const val MINIMUM_NOTIFICATION_DURATION_MS = 0L
 private const val MAXIMUM_NOTIFICATION_DURATION_MS = 300_000L
-private const val INVALID_NOTIFICATION_MESSAGE = "Invalid notification"
