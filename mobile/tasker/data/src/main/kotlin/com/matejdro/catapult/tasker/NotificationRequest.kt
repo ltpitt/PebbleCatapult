@@ -31,7 +31,7 @@ data class NotificationRequest(
             durationMs = bundle.getLong(BundleKeys.NOTIFICATION_DURATION_MS, DEFAULT_NOTIFICATION_DURATION_MS),
          )
          logcat {
-              "Parsed Tasker notification bundle: durationMs=${request.durationMs}"
+            "Parsed Tasker notification bundle: durationMs=${request.durationMs}"
          }
          return request
       }
