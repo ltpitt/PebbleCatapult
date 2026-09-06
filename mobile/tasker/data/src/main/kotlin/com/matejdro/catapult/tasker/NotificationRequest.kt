@@ -1,6 +1,7 @@
 package com.matejdro.catapult.tasker
 
 import android.os.Bundle
+import logcat.logcat
 
 enum class VibrationStyle {
    NONE,
@@ -29,6 +30,10 @@ data class NotificationRequest(
             vibration = vibration,
             durationMs = bundle.getLong(BundleKeys.NOTIFICATION_DURATION_MS, DEFAULT_NOTIFICATION_DURATION_MS),
          )
+         logcat {
+            "Parsed Tasker notification bundle: durationMs=${request.durationMs}, " +
+               "durationType=${bundle.get(BundleKeys.NOTIFICATION_DURATION_MS)?.javaClass?.simpleName ?: "default"}"
+         }
          return request
       }
    }

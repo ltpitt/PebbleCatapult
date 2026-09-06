@@ -1,6 +1,7 @@
 package com.matejdro.catapult.tasker.ui.screens.notification
 
 import android.os.Bundle
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -74,6 +75,10 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
          error = validateNotification(title, duration)
          if (error != null) return
 
+         Log.d(
+            "CatapultTasker",
+            "Saving notification configuration: durationSeconds=$duration, durationMs=$durationMs",
+         )
          activity.saveConfiguration(
             Bundle().apply {
                putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
