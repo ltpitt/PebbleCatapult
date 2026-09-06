@@ -70,6 +70,8 @@ private fun LogReaderScreenContent(
    val context = LocalContext.current
    val snackbarHostState = remember { SnackbarHostState() }
    val scope = rememberCoroutineScope()
+   val logsCopiedMessage = stringResource(R.string.logs_copied)
+   val shareLogsTitle = stringResource(R.string.share_logs_title)
 
    Scaffold(
       topBar = {
@@ -90,7 +92,7 @@ private fun LogReaderScreenContent(
                      onClick = {
                         clipboardManager.setText(AnnotatedString(content))
                         scope.launch {
-                           snackbarHostState.showSnackbar(context.getString(R.string.logs_copied))
+                           snackbarHostState.showSnackbar(logsCopiedMessage)
                         }
                      },
                   ) {
@@ -106,7 +108,7 @@ private fun LogReaderScreenContent(
                            putExtra(Intent.EXTRA_TEXT, content)
                         }
                         context.startActivity(
-                           Intent.createChooser(intent, context.getString(R.string.share_logs_title))
+                           Intent.createChooser(intent, shareLogsTitle)
                         )
                      },
                   ) {
