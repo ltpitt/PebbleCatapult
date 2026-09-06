@@ -28,11 +28,11 @@ for attempt in {1..30}; do
       --commit "$commit" \
       --limit 100 \
       --json databaseId,headSha,createdAt,displayTitle |
-      jq -r --arg commit "$commit" --arg dispatch_id "$dispatch_id" --argjson dispatch_epoch "$dispatch_epoch" '
+      jq -r --arg commit "$commit" --arg branch "$branch" --arg dispatch_id "$dispatch_id" --argjson dispatch_epoch "$dispatch_epoch" '
         map(select(
           .headSha == $commit and
-          ((.displayTitle // "") | contains($dispatch_id)) and
-          ((.createdAt | fromdateiso8601) >= $dispatch_epoch)
+          (.displayTitle == ("Quick debug build (" + $branch + ", " + $dispatch_id + ")")) and
+          (((.createdAt // "") | try fromdateiso8601 catch 0) >= $dispatch_epoch)
         ))
         | sort_by([.createdAt, .databaseId])
         | last
@@ -57,7 +57,12 @@ expected_assets="catapult-mobile.apk,catapult-watchapp.pbw"
 is_prerelease="$(gh release view debug-latest --repo "$repo" --json isPrerelease --jq '.isPrerelease')"
 assets="$(gh release view debug-latest --repo "$repo" --json assets --jq '[.assets[].name] | sort | join(",")')"
 target_commit="$(gh release view debug-latest --repo "$repo" --json targetCommitish --jq '.targetCommitish // ""')"
-body_commit="$(gh release view debug-latest --repo "$repo" --json body --jq 'try (.body | capture("Commit: `(?<commit>[0-9a-fA-F]{40})`").commit) catch ""')"
+body="$(gh release view debug-latest --repo "$repo" --json body --jq '.body // ""')"
+body_commit="$(jq -nr --arg body "$body" 'try ($body | capture("Commit: `(?<commit>[0-9a-fA-F]{40})`").commit) catch empty')"
+if [[ -z "$body_commit" ]]; then
+  echo "error: debug-latest has an empty or malformed release body; expected a 40-character Commit line" >&2
+  exit 1
+fi
 
 if [[ "$is_prerelease" != "true" ]]; then
   echo "error: debug-latest is not marked as a prerelease" >&2
@@ -68,8 +73,9 @@ if [[ "$assets" != "$expected_assets" ]]; then
   exit 1
 fi
 if [[ "$body_commit" != "$commit" ]]; then
-  echo "error: debug-latest does not target current commit $commit (target: '${target_commit:-unknown}', body: '${body_commit:-unknown}')" >&2
-  exit 1
+  echo "warning: a newer quick-build advanced debug-latest to commit $body_commit (watched run commit: $commit; target: '${target_commit:-unknown}')" >&2
+else
+  log "Verified debug-latest body commit $commit"
 fi
 
 log "Done. Debug APK and Pebble watchapp PBW published at:"

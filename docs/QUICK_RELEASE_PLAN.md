@@ -168,9 +168,9 @@ jobs:
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
-          python-version: '3.14'
+          python-version: '3.13'
       - name: Install latest Pebble SDK
-        run: uv tool install pebble-tool && (pebble sdk install latest || true)
+        run: uv tool install pebble-tool --python 3.13 && (pebble sdk install latest || true)
       - name: Enable Gradle remote build cache
         uses: burrunan/gradle-cache-action@663fbad34e03c8f12b27f4999ac46e3d90f87eca
         with:
@@ -230,8 +230,10 @@ both quick-build artifacts.
 ### Verification (run these after implementing, in order)
 
 1. Trigger the workflow:
-   `gh workflow run quick-build --repo <owner>/<repo> --ref <branch>`
-2. Wait for it to finish:
+   `gh workflow run quick-build --repo <owner>/<repo> --ref <branch> -f quick_release_id=<unique-id>`
+   Use a unique ID for each dispatch and match it to the run name
+   `Quick debug build (<branch>, <unique-id>)`.
+2. Wait for that run to finish:
    `gh run watch <run-id> --repo <owner>/<repo> --exit-status`
 3. Confirm the prerelease exists and has exactly two assets:
    `gh release view debug-latest --repo <owner>/<repo>`
