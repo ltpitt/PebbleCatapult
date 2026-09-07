@@ -2,7 +2,7 @@
 # stays runnable (and readable/debuggable) without make: `./scripts/x.sh`
 # works identically to `make x`.
 .DEFAULT_GOAL := help
-.PHONY: help build build-release watchapp test check install clean \
+.PHONY: help build build-release watchapp watch-test test check install clean \
         quick-release release releases
 
 help: ## Show this help
@@ -17,6 +17,9 @@ build-release: ## Build a release APK locally
 
 watchapp: ## Build the Pebble watchapp (requires pebble-tool)
 	@scripts/build-watchapp.sh
+
+watch-test: ## Run native Pebble host tests
+	@watch/tests/run_all.sh
 
 test: ## Run unit tests (same set as CI, minus screenshot tests)
 	@scripts/test.sh
