@@ -29,7 +29,6 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toKotlinInstant
 
 class TaskerActionRunnerTest {
@@ -38,7 +37,7 @@ class TaskerActionRunnerTest {
    private val pebbleSender = FakePebbleSender(scope.virtualTimeProvider())
    private val pebbleInfoRetriever = FakePebbleInfoRetriever()
    private val openController = FakeWatchappOpenController()
-   private val interactiveManager = RecordingInteractiveSessionManager(pebbleSender.events)
+   private val interactiveManager = RecordingInteractiveSessionManager()
    private val runner = TaskerActionRunner(
       repo,
       pebbleSender,
@@ -48,9 +47,7 @@ class TaskerActionRunnerTest {
       interactiveManager,
    )
 
-   private class RecordingInteractiveSessionManager(
-      private val events: MutableList<String>,
-   ) : InteractiveSessionManager {
+   private class RecordingInteractiveSessionManager : InteractiveSessionManager {
       data class NotificationCall(
          val title: String,
          val body: String,
@@ -60,7 +57,6 @@ class TaskerActionRunnerTest {
 
       val requests = mutableListOf<InteractiveTaskerRequest>()
       val notifications = mutableListOf<NotificationCall>()
-      var notificationFailure: Throwable? = null
 
       override fun registerSender(sender: InteractiveRequestSender) = Unit
       override suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult {
@@ -79,9 +75,6 @@ class TaskerActionRunnerTest {
          durationMs: Long,
          startWatchapp: suspend () -> Unit,
       ) {
-         notificationFailure?.let { throw it }
-           startWatchapp()
-           events += "immediate"
            notifications += NotificationCall(title, body, vibration, durationMs)
       }
       override fun cancelActive(reason: String) = Unit
@@ -99,23 +92,14 @@ class TaskerActionRunnerTest {
       }
 
       runner.run(bundle) shouldBe InteractiveTaskerResult.Success
-      interactiveManager.notifications.single() shouldBe
-         RecordingInteractiveSessionManager.NotificationCall(
-            title = "Door",
-            body = "Front door opened",
-            vibration = VibrationStyle.SHORT.ordinal,
-            durationMs = 5_000,
-         )
+      interactiveManager.notifications shouldBe emptyList()
       pebbleSender.insertedPins.single().layout shouldBe
          TimelineLayout(
             type = TimelineLayoutType.GENERIC_NOTIFICATION,
             title = "Door",
             body = "Front door opened",
          )
-      pebbleSender.insertedPins.single().duration shouldBe 5_000.milliseconds
-      pebbleSender.startedApps.shouldContainExactly(
-         FakePebbleSender.AppLifecycleEvent(WATCHAPP_UUID, null),
-      )
+      pebbleSender.insertedPins.single().duration shouldBe null
       NotificationRequest.fromBundle(bundle) shouldBe
          NotificationRequest("Door", "Front door opened", VibrationStyle.SHORT, 5_000)
    }
@@ -141,7 +125,7 @@ class TaskerActionRunnerTest {
          },
       )
 
-      interactiveManager.notifications.single().durationMs shouldBe 0
+      interactiveManager.notifications shouldBe emptyList()
       pebbleSender.insertedPins.single().duration shouldBe null
    }
 
@@ -157,31 +141,8 @@ class TaskerActionRunnerTest {
             },
          )
       }.shouldHaveMessage("Unknown notification error 'Disconnected'")
-      pebbleSender.events shouldBe listOf("immediate", "timeline")
-      interactiveManager.notifications.single() shouldBe
-         RecordingInteractiveSessionManager.NotificationCall(
-            title = "Door",
-            body = "",
-            vibration = VibrationStyle.NONE.ordinal,
-            durationMs = 10_000,
-         )
-   }
-
-   @Test
-   fun `Propagate direct notification failures without inserting a timeline pin`() = scope.runTest {
-      val failure = IllegalStateException("Watch connection is unavailable")
-      interactiveManager.notificationFailure = failure
-
-      shouldThrow<IllegalStateException> {
-         runner.run(
-            Bundle().apply {
-               putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
-               putString(BundleKeys.TITLE, "Door")
-            },
-         )
-      }.shouldBe(failure)
-
-      pebbleSender.insertedPins shouldBe emptyList()
+      pebbleSender.events shouldBe listOf("timeline")
+      interactiveManager.notifications shouldBe emptyList()
    }
 
    @Test

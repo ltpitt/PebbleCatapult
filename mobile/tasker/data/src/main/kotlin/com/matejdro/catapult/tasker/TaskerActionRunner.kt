@@ -91,19 +91,12 @@ class TaskerActionRunner(
             "vibration=${request.vibration}, durationMs=${request.durationMs}"
       }
       validateNotification(request)
-      interactiveSessionManager.sendNotification(
-         title = request.title,
-         body = request.body,
-         vibration = request.vibration.ordinal,
-         durationMs = request.durationMs,
-         startWatchapp = { sender.startAppOnTheWatch(WATCHAPP_UUID) },
-      )
       val result = sender.insertTimelinePin(
          WATCHAPP_UUID,
          TimelinePin(
             id = "catapult-notification-${UUID.randomUUID()}",
             startTime = timeProvider.currentInstant().toKotlinInstant(),
-            duration = request.durationMs.takeIf { it > 0 }?.milliseconds,
+            duration = null,
             layout = TimelineLayout(
                type = TimelineLayoutType.GENERIC_NOTIFICATION,
                title = request.title,
