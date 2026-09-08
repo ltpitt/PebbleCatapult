@@ -49,7 +49,18 @@ class TaskerActionRunnerTest {
    )
 
    private class RecordingInteractiveSessionManager : InteractiveSessionManager {
+      data class NotificationCall(
+         val title: String,
+         val body: String,
+         val vibration: Int,
+         val durationMs: Long,
+         val startWatchapp: Boolean,
+      )
+
       val requests = mutableListOf<InteractiveTaskerRequest>()
+      val notifications = mutableListOf<NotificationCall>()
+      var notificationFailure: Throwable? = null
+
       override fun registerSender(sender: InteractiveRequestSender) = Unit
       override suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult {
          requests += request
@@ -59,6 +70,16 @@ class TaskerActionRunnerTest {
             )
             is InteractiveTaskerRequest.Confirmation -> InteractiveTaskerResult.Confirmation(true)
          }
+      }
+      override suspend fun sendNotification(
+         title: String,
+         body: String,
+         vibration: Int,
+         durationMs: Long,
+         startWatchapp: suspend () -> Unit,
+      ) {
+         notificationFailure?.let { throw it }
+         notifications += NotificationCall(title, body, vibration, durationMs, startWatchapp = true)
       }
       override fun cancelActive(reason: String) = Unit
       override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) = Unit
