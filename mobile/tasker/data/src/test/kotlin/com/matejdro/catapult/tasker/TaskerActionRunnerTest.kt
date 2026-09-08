@@ -4,25 +4,26 @@ import android.os.Bundle
 import com.matejdro.catapult.actionlist.api.CatapultAction
 import com.matejdro.catapult.actionlist.test.FakeCatapultActionRepository
 import com.matejdro.catapult.bluetooth.FakePebbleInfoRetriever
+import com.matejdro.catapult.bluetooth.FakeWatchNotificationSender
 import com.matejdro.catapult.bluetooth.FakeWatchappOpenController
-import com.matejdro.catapult.bluetooth.NotificationPinSenderImpl
+import com.matejdro.catapult.bluetooth.NotificationSendResult
 import com.matejdro.catapult.bluetooth.api.WATCHAPP_UUID
 import com.matejdro.pebble.bluetooth.common.test.FakePebbleSender
 import io.kotest.assertions.throwables.shouldThrow
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
+import io.kotest.matchers.collections.shouldNotBeEmpty
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.throwable.shouldHaveMessage
 import io.rebble.pebblekit2.common.model.TimelineLayout
 import io.rebble.pebblekit2.common.model.TimelineLayoutType
 import io.rebble.pebblekit2.common.model.TimelinePin
-import io.rebble.pebblekit2.common.model.TimelineResult
 import io.rebble.pebblekit2.common.model.WatchIdentifier
 import io.rebble.pebblekit2.model.Watchapp
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
-import si.inova.kotlinova.core.exceptions.UnknownCauseException
 import si.inova.kotlinova.core.test.TestScopeWithDispatcherProvider
 import si.inova.kotlinova.core.test.outcomes.shouldBeSuccessWithData
 import si.inova.kotlinova.core.test.time.virtualTimeProvider
@@ -39,7 +40,7 @@ class TaskerActionRunnerTest {
    private val pebbleInfoRetriever = FakePebbleInfoRetriever()
    private val openController = FakeWatchappOpenController()
    private val interactiveManager = RecordingInteractiveSessionManager()
-   private val notificationPinSender = NotificationPinSenderImpl(pebbleSender, scope.virtualTimeProvider())
+   private val watchNotificationSender = FakeWatchNotificationSender()
    private val runner = TaskerActionRunner(
       repo,
       pebbleSender,
@@ -47,12 +48,12 @@ class TaskerActionRunnerTest {
       openController,
       scope.virtualTimeProvider(),
       interactiveManager,
-      notificationPinSender,
+      watchNotificationSender,
    )
 
-   // Tasker's SEND_NOTIFICATION action no longer calls InteractiveSessionManager.sendNotification()
-   // (it only inserts an official timeline pin), so this fake need not record notification calls -
-   // it only needs to service the interactive list/confirmation flows still used elsewhere.
+   // Tasker's SEND_NOTIFICATION action posts an ordinary phone notification (mirrored to the watch
+   // by the Pebble app), never InteractiveSessionManager.sendNotification(), so this fake need not
+   // record notification calls - it only services the interactive list/confirmation flows.
    private class RecordingInteractiveSessionManager : InteractiveSessionManager {
       val requests = mutableListOf<InteractiveTaskerRequest>()
 
@@ -80,7 +81,7 @@ class TaskerActionRunnerTest {
    }
 
    @Test
-   fun `Runner inserts send notification as a generic notification timeline pin`() = scope.runTest {
+   fun `Runner posts send notification as an ordinary phone notification`() = scope.runTest {
       val bundle = Bundle().apply {
          putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
          putString(BundleKeys.TITLE, "Door")
@@ -90,13 +91,10 @@ class TaskerActionRunnerTest {
       }
 
       runner.run(bundle) shouldBe InteractiveTaskerResult.Success
-      pebbleSender.insertedPins.single().layout shouldBe
-         TimelineLayout(
-            type = TimelineLayoutType.GENERIC_NOTIFICATION,
-            title = "Door",
-            body = "Front door opened",
-         )
-      pebbleSender.insertedPins.single().duration shouldBe null
+      watchNotificationSender.sentNotifications shouldContainExactly listOf(
+         FakeWatchNotificationSender.SentNotification("Door", "Front door opened"),
+      )
+      pebbleSender.insertedPins.shouldBeEmpty()
       NotificationRequest.fromBundle(bundle) shouldBe
          NotificationRequest("Door", "Front door opened", VibrationStyle.SHORT, 5_000)
    }
@@ -113,7 +111,7 @@ class TaskerActionRunnerTest {
    }
 
    @Test
-   fun `Zero notification duration creates a non-expiring timeline pin`() = scope.runTest {
+   fun `Posts notification regardless of requested duration`() = scope.runTest {
       runner.run(
          Bundle().apply {
             putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
@@ -122,27 +120,12 @@ class TaskerActionRunnerTest {
          },
       )
 
-      pebbleSender.insertedPins.single().duration shouldBe null
+      watchNotificationSender.sentNotifications.shouldNotBeEmpty()
    }
 
    @Test
-   fun `Preserve notification transport failures`() = scope.runTest {
-      pebbleSender.timelineResult = TimelineResult.Unknown("Disconnected")
-
-      shouldThrow<UnknownCauseException> {
-         runner.run(
-            Bundle().apply {
-               putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
-               putString(BundleKeys.TITLE, "Door")
-            },
-         )
-      }.shouldHaveMessage("Unknown notification error 'Disconnected'")
-      pebbleSender.events shouldBe listOf("timeline")
-   }
-
-   @Test
-   fun `Report missing companion app when inserting notification`() = scope.runTest {
-      pebbleSender.timelineResult = TimelineResult.FailedNoPebbleApp
+   fun `Report disabled notifications when posting`() = scope.runTest {
+      watchNotificationSender.result = NotificationSendResult.MISSING_PERMISSION
 
       shouldThrow<TaskerInvalidInputException> {
          runner.run(
@@ -151,7 +134,7 @@ class TaskerActionRunnerTest {
                putString(BundleKeys.TITLE, "Door")
             },
          )
-      }.shouldHaveMessage("Pebble companion app is not installed")
+      }.shouldHaveMessage("Notifications are disabled for Catapult")
    }
 
    @Test

@@ -12,14 +12,11 @@
     <string name="logs_copied">Logs copied</string>
     <string name="share_logs_title">Share today\'s logs</string>
     <string name="notification_test">Notification test</string>
-    <string name="notification_test_explanation">Sends an official Pebble timeline notification pin directly to the watch, bypassing Tasker, so notification delivery can be verified quickly.</string>
+    <string name="notification_test_explanation">Posts an ordinary phone notification (mirrored to the watch by the Pebble app), bypassing Tasker, so notification delivery can be verified quickly.</string>
     <string name="notification_test_title">Title</string>
     <string name="notification_test_body">Body</string>
     <string name="notification_test_send">Send to watch</string>
     <string name="notification_test_success">Notification sent successfully. Check the watch.</string>
-    <string name="notification_test_no_pebble_app">Failed: Pebble companion app is not installed.</string>
-    <string name="notification_test_no_permissions">Failed: Pebble companion app cannot insert notifications.</string>
-    <string name="notification_test_unsupported">Failed: installed Pebble companion app is too old for notifications.</string>
-    <string name="notification_test_unknown_pin">Failed: watch reported an unknown pin.</string>
+    <string name="notification_test_no_permissions">Failed: notifications are disabled for Catapult.</string>
     <string name="notification_test_error">Failed: %1$s</string>
 </resources>

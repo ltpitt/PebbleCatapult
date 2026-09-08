@@ -22,11 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.matejdro.catapult.bluetooth.NotificationSendResult
 import com.matejdro.catapult.navigation.keys.NotificationTestScreenKey
 import com.matejdro.catapult.ui.components.ErrorAlertDialog
 import com.matejdro.catapult.ui.debugging.FullScreenPreviews
 import com.matejdro.catapult.ui.debugging.PreviewTheme
-import io.rebble.pebblekit2.common.model.TimelineResult
 import si.inova.kotlinova.core.outcome.Outcome
 import si.inova.kotlinova.navigation.di.ContributesScreenBinding
 import si.inova.kotlinova.navigation.instructions.goBack
@@ -63,7 +63,7 @@ class NotificationTestScreen(
 private fun NotificationTestScreenContent(
    title: String,
    body: String,
-   sendResult: Outcome<TimelineResult?>?,
+   sendResult: Outcome<NotificationSendResult?>?,
    goBack: () -> Unit,
    setTitle: (String) -> Unit,
    setBody: (String) -> Unit,
@@ -121,7 +121,7 @@ private fun NotificationTestScreenContent(
 }
 
 @Composable
-private fun SendResult(sendResult: Outcome<TimelineResult?>?) {
+private fun SendResult(sendResult: Outcome<NotificationSendResult?>?) {
    when (sendResult) {
       null -> Unit
 
@@ -132,17 +132,10 @@ private fun SendResult(sendResult: Outcome<TimelineResult?>?) {
       is Outcome.Success -> {
          val result = sendResult.data ?: return
          val message = when (result) {
-            TimelineResult.Success -> stringResource(R.string.notification_test_success)
-            TimelineResult.FailedNoPebbleApp -> stringResource(R.string.notification_test_no_pebble_app)
-            TimelineResult.FailedNoPermissions -> stringResource(R.string.notification_test_no_permissions)
-            TimelineResult.FailedUnsupportedAction -> stringResource(R.string.notification_test_unsupported)
-            TimelineResult.FailedUnknownPin -> stringResource(R.string.notification_test_unknown_pin)
-            is TimelineResult.Unknown -> stringResource(
-               R.string.notification_test_error,
-               result.message.orEmpty(),
-            )
+            NotificationSendResult.SUCCESS -> stringResource(R.string.notification_test_success)
+            NotificationSendResult.MISSING_PERMISSION -> stringResource(R.string.notification_test_no_permissions)
          }
-         val color = if (result == TimelineResult.Success) {
+         val color = if (result == NotificationSendResult.SUCCESS) {
             MaterialTheme.colorScheme.primary
          } else {
             MaterialTheme.colorScheme.error
@@ -159,7 +152,7 @@ internal fun NotificationTestScreenPreview() {
       NotificationTestScreenContent(
          title = "Test notification",
          body = "Sent from the Catapult notification test tool",
-         sendResult = Outcome.Success(TimelineResult.Success),
+         sendResult = Outcome.Success(NotificationSendResult.SUCCESS),
          goBack = {},
          setTitle = {},
          setBody = {},

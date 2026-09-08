@@ -12,6 +12,8 @@ dependencies {
    api(libs.pebblekit.api)
 
    implementation(projects.common)
+   implementation(projects.commonAndroid)
+   implementation(libs.androidx.core)
    implementation(libs.dispatch)
    implementation(libs.kotlinova.core)
    implementation(libs.kotlin.coroutines)

@@ -1,9 +1,9 @@
 package com.matejdro.catapult.tools.ui
 
-import com.matejdro.catapult.bluetooth.NotificationPinSender
+import com.matejdro.catapult.bluetooth.FakeWatchNotificationSender
+import com.matejdro.catapult.bluetooth.NotificationSendResult
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.types.shouldBeInstanceOf
-import io.rebble.pebblekit2.common.model.TimelineResult
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
@@ -14,7 +14,7 @@ import si.inova.kotlinova.core.test.TestScopeWithDispatcherProvider
 
 class NotificationTestViewModelTest {
    private val scope = TestScopeWithDispatcherProvider()
-   private val sender = FakeNotificationPinSender()
+   private val sender = FakeWatchNotificationSender()
    private val viewModel = NotificationTestViewModel(
       CoroutineResourceManager(scope, ErrorReporter {}),
       {},
@@ -35,18 +35,18 @@ class NotificationTestViewModelTest {
       viewModel.send()
       advanceUntilIdle()
 
-      sender.sentNotifications shouldBe listOf(FakeNotificationPinSender.SentNotification("Door", "Front door opened"))
-      viewModel.sendResult.value shouldBe Outcome.Success(TimelineResult.Success)
+      sender.sentNotifications shouldBe listOf(FakeWatchNotificationSender.SentNotification("Door", "Front door opened"))
+      viewModel.sendResult.value shouldBe Outcome.Success(NotificationSendResult.SUCCESS)
    }
 
    @Test
    fun `Surfaces failure results from the sender`() = scope.runTest {
-      sender.result = TimelineResult.FailedNoPebbleApp
+      sender.result = NotificationSendResult.MISSING_PERMISSION
 
       viewModel.send()
       advanceUntilIdle()
 
-      viewModel.sendResult.value shouldBe Outcome.Success(TimelineResult.FailedNoPebbleApp)
+      viewModel.sendResult.value shouldBe Outcome.Success(NotificationSendResult.MISSING_PERMISSION)
    }
 
    @Test
@@ -66,20 +66,6 @@ class NotificationTestViewModelTest {
       viewModel.send()
       advanceUntilIdle()
 
-      viewModel.sendResult.value.shouldBeInstanceOf<Outcome.Error<TimelineResult?>>()
-   }
-
-   private class FakeNotificationPinSender : NotificationPinSender {
-      data class SentNotification(val title: String, val body: String)
-
-      val sentNotifications = mutableListOf<SentNotification>()
-      var result: TimelineResult = TimelineResult.Success
-      var failure: Throwable? = null
-
-      override suspend fun sendNotification(title: String, body: String): TimelineResult {
-         failure?.let { throw it }
-         sentNotifications += SentNotification(title, body)
-         return result
-      }
+      viewModel.sendResult.value.shouldBeInstanceOf<Outcome.Error<NotificationSendResult?>>()
    }
 }

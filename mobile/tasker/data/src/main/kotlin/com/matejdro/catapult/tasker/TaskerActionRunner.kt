@@ -2,7 +2,8 @@ package com.matejdro.catapult.tasker
 
 import android.os.Bundle
 import com.matejdro.catapult.actionlist.api.CatapultActionRepository
-import com.matejdro.catapult.bluetooth.NotificationPinSender
+import com.matejdro.catapult.bluetooth.NotificationSendResult
+import com.matejdro.catapult.bluetooth.WatchNotificationSender
 import com.matejdro.catapult.bluetooth.WatchappOpenController
 import com.matejdro.catapult.bluetooth.api.WATCHAPP_UUID
 import dev.zacsweers.metro.Inject
@@ -33,7 +34,7 @@ class TaskerActionRunner(
    private val openController: WatchappOpenController,
    private val timeProvider: TimeProvider,
    private val interactiveSessionManager: InteractiveSessionManager,
-   private val notificationPinSender: NotificationPinSender,
+   private val watchNotificationSender: WatchNotificationSender,
 ) {
    suspend fun run(bundle: Bundle): InteractiveTaskerResult? {
       val actionName = bundle.getString(BundleKeys.ACTION) ?: error("Missing action from bundle")
@@ -84,7 +85,7 @@ class TaskerActionRunner(
          .coerceAtLeast(MINIMUM_INTERACTIVE_TIMEOUT_MS)
          .milliseconds
 
-   @Suppress("ThrowsCount") // Timeline insertion maps each explicit companion result
+   @Suppress("ThrowsCount") // Each notification failure maps to an explicit companion result.
    private suspend fun runNotification(bundle: Bundle): InteractiveTaskerResult {
       val request = NotificationRequest.fromBundle(bundle)
       logcat {
@@ -92,33 +93,18 @@ class TaskerActionRunner(
             "vibration=${request.vibration}, durationMs=${request.durationMs}"
       }
       validateNotification(request)
-      // Duration/vibration are validated above but intentionally unused here: notificationPinSender
-      // always sends a persistent, non-expiring official timeline pin (see its kdoc).
-      val result = notificationPinSender.sendNotification(request.title, request.body)
+      // Duration/vibration are validated above but intentionally unused here: Catapult posts an
+      // ordinary phone notification and lets the Pebble companion app mirror it to the watch, so
+      // the watch's own notification behaviour (dismissal, history) applies.
+      val result = watchNotificationSender.sendNotification(request.title, request.body)
 
       when (result) {
-         TimelineResult.FailedNoPebbleApp -> {
-            throw TaskerInvalidInputException("Pebble companion app is not installed")
+         NotificationSendResult.MISSING_PERMISSION -> {
+            throw TaskerInvalidInputException("Notifications are disabled for Catapult")
          }
 
-         TimelineResult.FailedNoPermissions -> {
-            throw TaskerInvalidInputException("Pebble companion app cannot insert notifications")
-         }
-
-         TimelineResult.FailedUnsupportedAction -> {
-            throw TaskerInvalidInputException("Installed Pebble companion app is too old for notifications")
-         }
-
-         TimelineResult.FailedUnknownPin -> {
-            error("Received unknown pin while inserting a notification. This should never happen")
-         }
-
-         is TimelineResult.Unknown -> {
-            throw UnknownCauseException("Unknown notification error '${result.message.orEmpty()}'")
-         }
-
-         TimelineResult.Success -> {
-            logcat { "Pebble notification inserted successfully" }
+         NotificationSendResult.SUCCESS -> {
+            logcat { "Notification posted successfully" }
          }
       }
       return InteractiveTaskerResult.Success
