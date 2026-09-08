@@ -164,7 +164,6 @@ class TaskerActionRunnerTest {
             body = "",
             vibration = VibrationStyle.NONE.ordinal,
             durationMs = 10_000,
-            startWatchapp = true,
          )
    }
 
