@@ -52,8 +52,7 @@ class TaskerActionRunnerTest {
    )
 
    // Tasker's SEND_NOTIFICATION action posts an ordinary phone notification (mirrored to the watch
-   // by the Pebble app), never InteractiveSessionManager.sendNotification(), so this fake need not
-   // record notification calls - it only services the interactive list/confirmation flows.
+   // by the Pebble app), so this fake only services the interactive list/confirmation flows.
    private class RecordingInteractiveSessionManager : InteractiveSessionManager {
       val requests = mutableListOf<InteractiveTaskerRequest>()
 
@@ -66,15 +65,6 @@ class TaskerActionRunnerTest {
             )
             is InteractiveTaskerRequest.Confirmation -> InteractiveTaskerResult.Confirmation(true)
          }
-      }
-      override suspend fun sendNotification(
-         title: String,
-         body: String,
-         vibration: Int,
-         durationMs: Long,
-         startWatchapp: suspend () -> Unit,
-      ) {
-         error("Tasker notifications must use the official timeline pin, not this custom API")
       }
       override fun cancelActive(reason: String) = Unit
       override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) = Unit

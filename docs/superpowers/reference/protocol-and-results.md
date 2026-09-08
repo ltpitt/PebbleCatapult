@@ -20,8 +20,12 @@ Catapult. This rule applies to every implementation plan and screen variant.
 Android-to-Pebble communication must start from the official
 [PebbleKit Android 2](https://github.com/pebble-dev/PebbleKitAndroid2) APIs and
 documentation. Prefer typed `PebbleSender` operations, including
-`insertTimelinePin` for official Pebble timeline/notification experiences, over
-custom protocols or legacy companion broadcasts when supported.
+`insertTimelinePin` for official Pebble timeline experiences, over custom
+protocols or legacy companion broadcasts when supported. Standard watch
+notifications (pop up, dismissible, kept in the watch's notification history) are
+produced by posting an ordinary Android notification, which the Pebble companion
+app mirrors to the watch — not via `insertTimelinePin`, which writes timeline
+pins to a separate BlobDB.
 
 ## Gesture vocabulary
 
@@ -82,7 +86,7 @@ carries the packet ID.
 | 8 | LIST_SELECTION | Watch → Phone | Shipped |
 | 9 | CONFIRMATION_RESULT | Watch → Phone | Shipped |
 | 10 | CANCEL_OR_ERROR | Watch → Phone | Shipped |
-| 11 | Show notification | Phone → Watch | Shipped |
+| 11 | Show notification | Phone → Watch | Removed (standard notifications now use mirrored phone notifications) |
 | 12 | SHOW_TEXT | Phone → Watch | Reserved (detail-text-screens) |
 | 13 | SHOW_QUICK_ACTIONS | Phone → Watch | Reserved (quick-action-screens) |
 | 14 | SCREEN_ACTION_RESULT | Watch → Phone | Reserved (text/quick result: action ID + gesture) |

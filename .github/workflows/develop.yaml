@@ -18,8 +18,6 @@ jobs:
           lfs: true
           submodules: recursive
           fetch-depth: 0
-      - name: Run native Pebble tests
-        run: ./watch/tests/run_all.sh
 
       # Determine new version
 

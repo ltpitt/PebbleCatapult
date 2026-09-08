@@ -13,9 +13,16 @@ behavior required by Catapult.
 When adding or changing Android-to-Pebble communication, start with the official
 [PebbleKit Android 2](https://github.com/pebble-dev/PebbleKitAndroid2) APIs and
 documentation. Prefer typed `PebbleSender` operations, including
-`insertTimelinePin` for official Pebble timeline and notification experiences,
-over custom protocols or legacy companion broadcasts when the API supports the
-required behavior.
+`insertTimelinePin` for official Pebble timeline experiences, over custom
+protocols or legacy companion broadcasts when the API supports the required
+behavior.
+
+To produce a **standard watch notification** (one that pops up, is dismissible,
+and lands in the watch's notification history), post an ordinary Android
+notification via `NotificationManagerCompat`; the Pebble companion app mirrors it
+to the watch. `PebbleSender` exposes no notification API — `insertTimelinePin`
+writes timeline pins (a separate BlobDB, reached with the watchface up/down
+buttons), not the notification inbox.
 
 ## Planning
 

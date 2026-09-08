@@ -9,7 +9,6 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -98,72 +97,6 @@ class InteractiveSessionManagerImpl(
       }
    }
 
-   override suspend fun sendNotification(title: String, body: String, vibration: Int, durationMs: Long) {
-      sendNotificationInternal(title, body, vibration, durationMs, null)
-   }
-
-   override suspend fun sendNotification(
-      title: String,
-      body: String,
-      vibration: Int,
-      durationMs: Long,
-      startWatchapp: suspend () -> Unit,
-   ) {
-      sendNotificationInternal(title, body, vibration, durationMs, startWatchapp)
-   }
-
-   private suspend fun sendNotificationInternal(
-      title: String,
-      body: String,
-      vibration: Int,
-      durationMs: Long,
-      startWatchapp: (suspend () -> Unit)?,
-   ) {
-      val session = mutex.withLock {
-         activeSession?.also { activeSessionEntry ->
-            activeSession = null
-            activeSessionEntry.result.complete(InteractiveTaskerResult.Cancelled(INTERACTIVE_SESSION_REPLACED_REASON))
-         }
-      }
-      if (session != null) {
-         cancelSessionIgnoringFailures(session, INTERACTIVE_SESSION_REPLACED_REASON)
-      }
-      // Notifications have no watch selector, so use the connected watch with the lowest ID.
-      // Sorting avoids depending on connection/map insertion order when multiple watches are connected.
-      var sender = synchronized(senders) { senders.entries.minByOrNull { it.key }?.value }
-      logcat {
-         "Sending notification: title='$title', bodyLength=${body.length}, " +
-            "vibration=$vibration, durationMs=$durationMs, senderAvailable=${sender != null}"
-      }
-      if (sender == null) {
-         val launcher = startWatchapp ?: error("Watch connection is unavailable")
-         for (attempt in 0 until NOTIFICATION_START_ATTEMPTS) {
-            logcat {
-               "No watch sender available; starting watch app, " +
-                  "attempt ${attempt + 1}/$NOTIFICATION_START_ATTEMPTS; " +
-                  "waiting up to ${NOTIFICATION_CONNECTION_TIMEOUT_MS}ms"
-            }
-            launcher()
-            withTimeoutOrNull(NOTIFICATION_CONNECTION_TIMEOUT_MS) {
-               while (sender == null) {
-                  delay(NOTIFICATION_CONNECTION_POLL_INTERVAL_MS)
-                  sender = synchronized(senders) { senders.entries.minByOrNull { it.key }?.value }
-               }
-            }
-            if (sender != null) break
-         }
-         if (sender == null) {
-            logcat { "Watch sender did not become ready after $NOTIFICATION_START_ATTEMPTS attempts" }
-            error("Watch connection is unavailable")
-         }
-         logcat { "Watch sender became available after starting watch app" }
-      }
-      val notificationSender = sender ?: error("Watch connection is unavailable")
-      logcat { "Sending notification packet to watch" }
-      notificationSender.sendNotification(title, body, vibration, durationMs)
-      logcat { "Notification packet sent successfully" }
-   }
-
    override fun cancelActive(reason: String) {
       kotlinx.coroutines.runBlocking { cancelActive("default", reason) }
    }
@@ -221,7 +154,3 @@ class InteractiveSessionManagerImpl(
 
 private const val INTERACTIVE_SESSION_TIMED_OUT_REASON = "Interactive session timed out"
 private const val INTERACTIVE_SESSION_CANCELLED_REASON = "Interactive session cancelled"
-private const val INTERACTIVE_SESSION_REPLACED_REASON = "Interactive session replaced by notification"
-private const val NOTIFICATION_CONNECTION_TIMEOUT_MS = 5_000L
-private const val NOTIFICATION_CONNECTION_POLL_INTERVAL_MS = 50L
-private const val NOTIFICATION_START_ATTEMPTS = 3

@@ -27,7 +27,7 @@ vocabulary) live in [`protocol-and-results.md`](protocol-and-results.md).
 | Timeline pin creation/deletion | Built | — | Tasker `CREATE_PIN` / `DELETE_PIN` actions. |
 | Interactive list selection | Built | [interactive-tasker-sessions](../specs/2026-09-03-interactive-tasker-sessions-design.md) | `SHOW_LIST` screen variant. |
 | Confirmation dialog | Built | [interactive-tasker-sessions](../specs/2026-09-03-interactive-tasker-sessions-design.md) | `SHOW_CONFIRMATION` screen variant. |
-| One-way watch notification | Built | [watch-notifications](../specs/2026-09-04-watch-notifications-design.md) | Packet 11; replaces the obsolete `SEND_NOTIFICATION` broadcast. |
+| Watch notification | Built | — | Posts an ordinary Android notification mirrored to the watch by the Pebble companion app (Tasker `SEND_NOTIFICATION` and the in-app notification test tool). |
 | Quick-action screen (Up/Select/Down) | Planned | [quick-action-screens](../specs/2026-09-04-quick-action-screens-design.md) | `quick` screen variant. |
 | Text/detail screen (scrollable) | Planned | [detail-text-screens](../specs/2026-09-04-detail-text-screens-design.md) | `text` screen variant. |
 | Live clock text variable | Planned | [detail-text-screens](../specs/2026-09-04-detail-text-screens-design.md) | Optional time token inside a text screen. |
