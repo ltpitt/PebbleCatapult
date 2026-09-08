@@ -96,6 +96,14 @@ class TaskerActionRunnerTest {
       }
 
       runner.run(bundle) shouldBe InteractiveTaskerResult.Success
+      interactiveManager.notifications.single() shouldBe
+         RecordingInteractiveSessionManager.NotificationCall(
+            title = "Door",
+            body = "Front door opened",
+            vibration = VibrationStyle.SHORT.ordinal,
+            durationMs = 5_000,
+            startWatchapp = true,
+         )
       pebbleSender.insertedPins.single().layout shouldBe
          TimelineLayout(
             type = TimelineLayoutType.GENERIC_NOTIFICATION,
@@ -144,6 +152,31 @@ class TaskerActionRunnerTest {
             },
          )
       }.shouldHaveMessage("Unknown notification error 'Disconnected'")
+      interactiveManager.notifications.single() shouldBe
+         RecordingInteractiveSessionManager.NotificationCall(
+            title = "Door",
+            body = "",
+            vibration = VibrationStyle.NONE.ordinal,
+            durationMs = 10_000,
+            startWatchapp = true,
+         )
+   }
+
+   @Test
+   fun `Propagate direct notification failures without inserting a timeline pin`() = scope.runTest {
+      val failure = IllegalStateException("Watch connection is unavailable")
+      interactiveManager.notificationFailure = failure
+
+      shouldThrow<IllegalStateException> {
+         runner.run(
+            Bundle().apply {
+               putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
+               putString(BundleKeys.TITLE, "Door")
+            },
+         )
+      }.shouldBe(failure)
+
+      pebbleSender.insertedPins shouldBe emptyList()
    }
 
    @Test
