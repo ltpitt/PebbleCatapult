@@ -91,6 +91,13 @@ class TaskerActionRunner(
             "vibration=${request.vibration}, durationMs=${request.durationMs}"
       }
       validateNotification(request)
+      interactiveSessionManager.sendNotification(
+         title = request.title,
+         body = request.body,
+         vibration = request.vibration.ordinal,
+         durationMs = request.durationMs,
+         startWatchapp = { sender.startAppOnTheWatch(WATCHAPP_UUID) },
+      )
       val result = sender.insertTimelinePin(
          WATCHAPP_UUID,
          TimelinePin(
