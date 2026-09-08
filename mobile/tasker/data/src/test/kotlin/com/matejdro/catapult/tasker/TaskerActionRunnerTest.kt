@@ -47,16 +47,11 @@ class TaskerActionRunnerTest {
       interactiveManager,
    )
 
+   // Tasker's SEND_NOTIFICATION action no longer calls InteractiveSessionManager.sendNotification()
+   // (it only inserts an official timeline pin), so this fake need not record notification calls -
+   // it only needs to service the interactive list/confirmation flows still used elsewhere.
    private class RecordingInteractiveSessionManager : InteractiveSessionManager {
-      data class NotificationCall(
-         val title: String,
-         val body: String,
-         val vibration: Int,
-         val durationMs: Long,
-      )
-
       val requests = mutableListOf<InteractiveTaskerRequest>()
-      val notifications = mutableListOf<NotificationCall>()
 
       override fun registerSender(sender: InteractiveRequestSender) = Unit
       override suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult {
@@ -75,7 +70,7 @@ class TaskerActionRunnerTest {
          durationMs: Long,
          startWatchapp: suspend () -> Unit,
       ) {
-           notifications += NotificationCall(title, body, vibration, durationMs)
+         error("Tasker notifications must use the official timeline pin, not this custom API")
       }
       override fun cancelActive(reason: String) = Unit
       override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) = Unit
@@ -92,7 +87,6 @@ class TaskerActionRunnerTest {
       }
 
       runner.run(bundle) shouldBe InteractiveTaskerResult.Success
-      interactiveManager.notifications shouldBe emptyList()
       pebbleSender.insertedPins.single().layout shouldBe
          TimelineLayout(
             type = TimelineLayoutType.GENERIC_NOTIFICATION,
@@ -125,7 +119,6 @@ class TaskerActionRunnerTest {
          },
       )
 
-      interactiveManager.notifications shouldBe emptyList()
       pebbleSender.insertedPins.single().duration shouldBe null
    }
 
@@ -142,7 +135,6 @@ class TaskerActionRunnerTest {
          )
       }.shouldHaveMessage("Unknown notification error 'Disconnected'")
       pebbleSender.events shouldBe listOf("timeline")
-      interactiveManager.notifications shouldBe emptyList()
    }
 
    @Test

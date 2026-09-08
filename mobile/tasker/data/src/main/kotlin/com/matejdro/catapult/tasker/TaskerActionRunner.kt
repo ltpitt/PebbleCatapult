@@ -96,6 +96,9 @@ class TaskerActionRunner(
          TimelinePin(
             id = "catapult-notification-${UUID.randomUUID()}",
             startTime = timeProvider.currentInstant().toKotlinInstant(),
+            // Always non-expiring: official notification pins must remain visible in the
+            // timeline as a persistent trace, regardless of the (still-validated) Tasker
+            // duration input.
             duration = null,
             layout = TimelineLayout(
                type = TimelineLayoutType.GENERIC_NOTIFICATION,
