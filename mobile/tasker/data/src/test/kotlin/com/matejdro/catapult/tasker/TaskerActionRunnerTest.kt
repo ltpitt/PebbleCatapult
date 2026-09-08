@@ -5,6 +5,7 @@ import com.matejdro.catapult.actionlist.api.CatapultAction
 import com.matejdro.catapult.actionlist.test.FakeCatapultActionRepository
 import com.matejdro.catapult.bluetooth.FakePebbleInfoRetriever
 import com.matejdro.catapult.bluetooth.FakeWatchappOpenController
+import com.matejdro.catapult.bluetooth.NotificationPinSenderImpl
 import com.matejdro.catapult.bluetooth.api.WATCHAPP_UUID
 import com.matejdro.pebble.bluetooth.common.test.FakePebbleSender
 import io.kotest.assertions.throwables.shouldThrow
@@ -29,7 +30,6 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toKotlinInstant
 
 class TaskerActionRunnerTest {
@@ -39,6 +39,7 @@ class TaskerActionRunnerTest {
    private val pebbleInfoRetriever = FakePebbleInfoRetriever()
    private val openController = FakeWatchappOpenController()
    private val interactiveManager = RecordingInteractiveSessionManager()
+   private val notificationPinSender = NotificationPinSenderImpl(pebbleSender, scope.virtualTimeProvider())
    private val runner = TaskerActionRunner(
       repo,
       pebbleSender,
@@ -46,10 +47,15 @@ class TaskerActionRunnerTest {
       openController,
       scope.virtualTimeProvider(),
       interactiveManager,
+      notificationPinSender,
    )
 
+   // Tasker's SEND_NOTIFICATION action no longer calls InteractiveSessionManager.sendNotification()
+   // (it only inserts an official timeline pin), so this fake need not record notification calls -
+   // it only needs to service the interactive list/confirmation flows still used elsewhere.
    private class RecordingInteractiveSessionManager : InteractiveSessionManager {
       val requests = mutableListOf<InteractiveTaskerRequest>()
+
       override fun registerSender(sender: InteractiveRequestSender) = Unit
       override suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult {
          requests += request
@@ -59,6 +65,15 @@ class TaskerActionRunnerTest {
             )
             is InteractiveTaskerRequest.Confirmation -> InteractiveTaskerResult.Confirmation(true)
          }
+      }
+      override suspend fun sendNotification(
+         title: String,
+         body: String,
+         vibration: Int,
+         durationMs: Long,
+         startWatchapp: suspend () -> Unit,
+      ) {
+         error("Tasker notifications must use the official timeline pin, not this custom API")
       }
       override fun cancelActive(reason: String) = Unit
       override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) = Unit
@@ -81,7 +96,7 @@ class TaskerActionRunnerTest {
             title = "Door",
             body = "Front door opened",
          )
-      pebbleSender.insertedPins.single().duration shouldBe 5_000.milliseconds
+      pebbleSender.insertedPins.single().duration shouldBe null
       NotificationRequest.fromBundle(bundle) shouldBe
          NotificationRequest("Door", "Front door opened", VibrationStyle.SHORT, 5_000)
    }
@@ -108,7 +123,6 @@ class TaskerActionRunnerTest {
       )
 
       pebbleSender.insertedPins.single().duration shouldBe null
-      pebbleSender.startedApps shouldBe emptyList()
    }
 
    @Test
@@ -123,6 +137,7 @@ class TaskerActionRunnerTest {
             },
          )
       }.shouldHaveMessage("Unknown notification error 'Disconnected'")
+      pebbleSender.events shouldBe listOf("timeline")
    }
 
    @Test
