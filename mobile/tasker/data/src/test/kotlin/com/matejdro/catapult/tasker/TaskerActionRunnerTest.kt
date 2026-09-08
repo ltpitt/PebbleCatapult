@@ -81,8 +81,9 @@ class TaskerActionRunnerTest {
          startWatchapp: suspend () -> Unit,
       ) {
          notificationFailure?.let { throw it }
-         events += "immediate"
-         notifications += NotificationCall(title, body, vibration, durationMs, startWatchapp = startWatchapp != null)
+           startWatchapp()
+           events += "immediate"
+           notifications += NotificationCall(title, body, vibration, durationMs, startWatchapp = true)
       }
       override fun cancelActive(reason: String) = Unit
       override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) = Unit
@@ -114,6 +115,9 @@ class TaskerActionRunnerTest {
             body = "Front door opened",
          )
       pebbleSender.insertedPins.single().duration shouldBe 5_000.milliseconds
+      pebbleSender.startedApps.shouldContainExactly(
+         FakePebbleSender.AppLifecycleEvent(WATCHAPP_UUID, null),
+      )
       NotificationRequest.fromBundle(bundle) shouldBe
          NotificationRequest("Door", "Front door opened", VibrationStyle.SHORT, 5_000)
    }
