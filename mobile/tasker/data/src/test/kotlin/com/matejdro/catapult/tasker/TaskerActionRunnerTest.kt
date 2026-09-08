@@ -56,7 +56,6 @@ class TaskerActionRunnerTest {
          val body: String,
          val vibration: Int,
          val durationMs: Long,
-         val startWatchapp: Boolean,
       )
 
       val requests = mutableListOf<InteractiveTaskerRequest>()
@@ -83,7 +82,7 @@ class TaskerActionRunnerTest {
          notificationFailure?.let { throw it }
            startWatchapp()
            events += "immediate"
-           notifications += NotificationCall(title, body, vibration, durationMs, startWatchapp = true)
+           notifications += NotificationCall(title, body, vibration, durationMs)
       }
       override fun cancelActive(reason: String) = Unit
       override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) = Unit
@@ -106,7 +105,6 @@ class TaskerActionRunnerTest {
             body = "Front door opened",
             vibration = VibrationStyle.SHORT.ordinal,
             durationMs = 5_000,
-            startWatchapp = true,
          )
       pebbleSender.insertedPins.single().layout shouldBe
          TimelineLayout(
