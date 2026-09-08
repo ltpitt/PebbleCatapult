@@ -38,7 +38,7 @@ class TaskerActionRunnerTest {
    private val pebbleSender = FakePebbleSender(scope.virtualTimeProvider())
    private val pebbleInfoRetriever = FakePebbleInfoRetriever()
    private val openController = FakeWatchappOpenController()
-   private val interactiveManager = RecordingInteractiveSessionManager()
+   private val interactiveManager = RecordingInteractiveSessionManager(pebbleSender.events)
    private val runner = TaskerActionRunner(
       repo,
       pebbleSender,
@@ -48,7 +48,9 @@ class TaskerActionRunnerTest {
       interactiveManager,
    )
 
-   private class RecordingInteractiveSessionManager : InteractiveSessionManager {
+   private class RecordingInteractiveSessionManager(
+      private val events: MutableList<String>,
+   ) : InteractiveSessionManager {
       data class NotificationCall(
          val title: String,
          val body: String,
@@ -79,7 +81,8 @@ class TaskerActionRunnerTest {
          startWatchapp: suspend () -> Unit,
       ) {
          notificationFailure?.let { throw it }
-         notifications += NotificationCall(title, body, vibration, durationMs, startWatchapp = true)
+         events += "immediate"
+         notifications += NotificationCall(title, body, vibration, durationMs, startWatchapp = startWatchapp != null)
       }
       override fun cancelActive(reason: String) = Unit
       override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) = Unit
@@ -152,6 +155,7 @@ class TaskerActionRunnerTest {
             },
          )
       }.shouldHaveMessage("Unknown notification error 'Disconnected'")
+      pebbleSender.events shouldBe listOf("immediate", "timeline")
       interactiveManager.notifications.single() shouldBe
          RecordingInteractiveSessionManager.NotificationCall(
             title = "Door",
