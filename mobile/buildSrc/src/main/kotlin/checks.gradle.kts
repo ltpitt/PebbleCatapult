@@ -17,13 +17,10 @@ apply(plugin = "dev.detekt")
 
 if (isAndroidProject()) {
    commonAndroid {
-      lint {
-         lintConfig = file("$rootDir/config/android-lint.xml")
-         abortOnError = true
-
-         warningsAsErrors = true
-         sarifReport = true
-      }
+      lint.lintConfig = file("$rootDir/config/android-lint.xml")
+      lint.abortOnError = true
+      lint.warningsAsErrors = true
+      lint.sarifReport = true
    }
 
    tasks.withType(AndroidLintTask::class.java).configureEach {

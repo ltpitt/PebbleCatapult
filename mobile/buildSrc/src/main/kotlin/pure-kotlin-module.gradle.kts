@@ -1,4 +1,3 @@
-import com.android.build.gradle.internal.tasks.factory.dependsOn
 import jacoco.setupJacocoMergingPureKotlin
 import org.gradle.accessors.dm.LibrariesForLibs
 
@@ -21,11 +20,13 @@ tasks.test {
 }
 
 val runDebugTestsTask = tasks.register("runDebugTests")
-runDebugTestsTask.dependsOn(tasks.test)
+runDebugTestsTask.configure { dependsOn(tasks.test) }
 
 val runDebugDetektTask = tasks.register("runDebugDetekt")
-runDebugDetektTask.dependsOn("detektMain")
-runDebugDetektTask.dependsOn("detektTest")
+runDebugDetektTask.configure {
+   dependsOn("detektMain")
+   dependsOn("detektTest")
+}
 
 jacoco {
    toolVersion = libs.versions.jacoco.get()

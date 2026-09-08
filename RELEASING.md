@@ -14,6 +14,9 @@ Run `make help` for the full list. Highlights:
   before pushing.
 - `make test` — run unit tests.
 - `make install` — build the debug APK and install it via `adb`.
+- `make watchapp-install` — build the Pebble watchapp and install it on a
+  watch connected through the Pebble phone app. Set `PEBBLE_PHONE_IP` to the
+  phone's developer-connection IP for a direct connection.
 - `make quick-release` — trigger the `quick-build` workflow on the current
   branch and print the resulting `debug-latest` release URL when done.
 - `make release` — trigger the full `develop-build` release workflow.

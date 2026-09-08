@@ -1,18 +1,15 @@
 import com.android.build.api.dsl.LibraryAndroidResources
-import com.android.build.gradle.internal.tasks.factory.dependsOn
-import com.android.build.gradle.tasks.asJavaVersion
 import dev.detekt.gradle.extensions.DetektExtension
 import jacoco.setupJacocoMergingAndroid
 import org.gradle.accessors.dm.LibrariesForLibs
-import org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import util.commonAndroid
 import util.commonAndroidComponents
 
 val libs = the<LibrariesForLibs>()
 
 plugins {
-   id("org.jetbrains.kotlin.android")
-
    id("all-modules-commons")
    id("org.gradle.android.cache-fix")
 }
@@ -28,20 +25,20 @@ commonAndroid {
 
    compileSdk = 36
 
-   compileOptions {
+   compileOptions.apply {
       sourceCompatibility = JavaVersion.VERSION_17
-      targetCompatibility = JavaVersion.VERSION_17
+      targetCompatibility = JavaVersion.VERSION_21
 
       isCoreLibraryDesugaringEnabled = true
    }
 
-   defaultConfig {
+   defaultConfig.apply {
       minSdk = 24
 
       testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
    }
 
-   testOptions {
+   testOptions.apply {
       unitTests.all {
          it.useJUnitPlatform()
 
@@ -55,13 +52,9 @@ commonAndroid {
       }
    }
 
-   packaging {
-      resources {
-         excludes += "/META-INF/{AL2.0,LGPL2.1}"
-      }
-   }
+   packaging.resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
 
-   buildFeatures {
+   buildFeatures.apply {
       buildConfig = false
       resValues = false
       shaders = false
@@ -72,25 +65,15 @@ commonAndroid {
       androidResources.enable = false
    }
 
-   compileOptions {
-      // Android still creates java tasks, even with 100% Kotlin.
-      // Ensure that target compatiblity is equal to kotlin's jvmToolchain
-      lateinit var javaVersion: JavaVersion
-      the<KotlinProjectExtension>().jvmToolchain { javaVersion = this.languageVersion.get().asJavaVersion() }
-
-      targetCompatibility = javaVersion
+   buildTypes.getByName("debug").apply {
+      testCoverage.jacocoVersion = libs.versions.jacoco.get()
+      enableUnitTestCoverage = true
+      enableAndroidTestCoverage = true
    }
+}
 
-   buildTypes {
-      debug {
-         testCoverage {
-            jacocoVersion = libs.versions.jacoco.get()
-         }
-
-         enableUnitTestCoverage = true
-         enableAndroidTestCoverage = true
-      }
-   }
+tasks.withType<KotlinCompile>().configureEach {
+   compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
 }
 
 project.setupJacocoMergingAndroid()
@@ -118,12 +101,17 @@ commonAndroidComponents {
       if (variant.buildType == "debug") {
 
          if (!pluginManager.hasPlugin("com.android.test")) {
-            runDebugTestsTask.dependsOn(variant.computeTaskName("test", "UnitTest"))
-
-            runDebugDetektTask.dependsOn(variant.computeTaskName("detekt", "UnitTest"))
-            runDebugDetektTask.dependsOn(variant.computeTaskName("detekt", "AndroidTest"))
+            runDebugTestsTask.configure {
+               dependsOn(variant.computeTaskName("test", "UnitTest"))
+            }
+            runDebugDetektTask.configure {
+               dependsOn(variant.computeTaskName("detekt", "UnitTest"))
+               dependsOn(variant.computeTaskName("detekt", "AndroidTest"))
+            }
          }
-         runDebugDetektTask.dependsOn("detekt${variant.name.replaceFirstChar { it.uppercaseChar() }}")
+         runDebugDetektTask.configure {
+            dependsOn("detekt${variant.name.replaceFirstChar { it.uppercaseChar() }}")
+         }
       }
    }
 }
