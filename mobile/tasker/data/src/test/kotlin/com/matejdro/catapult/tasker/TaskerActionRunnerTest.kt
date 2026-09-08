@@ -142,7 +142,9 @@ class TaskerActionRunnerTest {
       )
 
       pebbleSender.insertedPins.single().duration shouldBe null
-      pebbleSender.startedApps shouldBe emptyList()
+      pebbleSender.startedApps.shouldContainExactly(
+         FakePebbleSender.AppLifecycleEvent(WATCHAPP_UUID, null),
+      )
    }
 
    @Test
