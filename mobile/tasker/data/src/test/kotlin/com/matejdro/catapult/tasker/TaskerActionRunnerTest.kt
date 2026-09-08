@@ -5,6 +5,7 @@ import com.matejdro.catapult.actionlist.api.CatapultAction
 import com.matejdro.catapult.actionlist.test.FakeCatapultActionRepository
 import com.matejdro.catapult.bluetooth.FakePebbleInfoRetriever
 import com.matejdro.catapult.bluetooth.FakeWatchappOpenController
+import com.matejdro.catapult.bluetooth.NotificationPinSenderImpl
 import com.matejdro.catapult.bluetooth.api.WATCHAPP_UUID
 import com.matejdro.pebble.bluetooth.common.test.FakePebbleSender
 import io.kotest.assertions.throwables.shouldThrow
@@ -38,6 +39,7 @@ class TaskerActionRunnerTest {
    private val pebbleInfoRetriever = FakePebbleInfoRetriever()
    private val openController = FakeWatchappOpenController()
    private val interactiveManager = RecordingInteractiveSessionManager()
+   private val notificationPinSender = NotificationPinSenderImpl(pebbleSender, scope.virtualTimeProvider())
    private val runner = TaskerActionRunner(
       repo,
       pebbleSender,
@@ -45,6 +47,7 @@ class TaskerActionRunnerTest {
       openController,
       scope.virtualTimeProvider(),
       interactiveManager,
+      notificationPinSender,
    )
 
    // Tasker's SEND_NOTIFICATION action no longer calls InteractiveSessionManager.sendNotification()

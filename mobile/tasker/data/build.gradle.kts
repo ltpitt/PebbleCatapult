@@ -26,6 +26,7 @@ dependencies {
 
    testImplementation(testFixtures(projects.actionlist.api))
    testImplementation(projects.bluetoothCommon)
+   testImplementation(projects.bluetooth.data)
    testImplementation(testFixtures(projects.bluetooth.api))
    testImplementation(libs.kotlinova.core.test)
 }

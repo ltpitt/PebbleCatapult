@@ -2,6 +2,7 @@ package com.matejdro.catapult.tasker
 
 import android.os.Bundle
 import com.matejdro.catapult.actionlist.api.CatapultActionRepository
+import com.matejdro.catapult.bluetooth.NotificationPinSender
 import com.matejdro.catapult.bluetooth.WatchappOpenController
 import com.matejdro.catapult.bluetooth.api.WATCHAPP_UUID
 import dev.zacsweers.metro.Inject
@@ -20,7 +21,6 @@ import si.inova.kotlinova.core.time.TimeProvider
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeParseException
-import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.toKotlinInstant
@@ -33,6 +33,7 @@ class TaskerActionRunner(
    private val openController: WatchappOpenController,
    private val timeProvider: TimeProvider,
    private val interactiveSessionManager: InteractiveSessionManager,
+   private val notificationPinSender: NotificationPinSender,
 ) {
    suspend fun run(bundle: Bundle): InteractiveTaskerResult? {
       val actionName = bundle.getString(BundleKeys.ACTION) ?: error("Missing action from bundle")
@@ -91,22 +92,9 @@ class TaskerActionRunner(
             "vibration=${request.vibration}, durationMs=${request.durationMs}"
       }
       validateNotification(request)
-      val result = sender.insertTimelinePin(
-         WATCHAPP_UUID,
-         TimelinePin(
-            id = "catapult-notification-${UUID.randomUUID()}",
-            startTime = timeProvider.currentInstant().toKotlinInstant(),
-            // Always non-expiring: official notification pins must remain visible in the
-            // timeline as a persistent trace, regardless of the (still-validated) Tasker
-            // duration input.
-            duration = null,
-            layout = TimelineLayout(
-               type = TimelineLayoutType.GENERIC_NOTIFICATION,
-               title = request.title,
-               body = request.body,
-            ),
-         ),
-      )
+      // Duration/vibration are validated above but intentionally unused here: notificationPinSender
+      // always sends a persistent, non-expiring official timeline pin (see its kdoc).
+      val result = notificationPinSender.sendNotification(request.title, request.body)
 
       when (result) {
          TimelineResult.FailedNoPebbleApp -> {
