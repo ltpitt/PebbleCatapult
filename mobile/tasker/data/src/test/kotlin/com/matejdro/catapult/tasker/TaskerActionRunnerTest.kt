@@ -141,6 +141,7 @@ class TaskerActionRunnerTest {
          },
       )
 
+      interactiveManager.notifications.single().durationMs shouldBe 0
       pebbleSender.insertedPins.single().duration shouldBe null
    }
 
