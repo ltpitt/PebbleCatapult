@@ -14,6 +14,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.channels.Channel
 import logcat.logcat
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
@@ -36,6 +37,7 @@ class InteractiveSessionManagerImpl(
    private var nextSessionId = 1u
    private var activeSession: ActiveSession? = null
    private val senders = mutableMapOf<String, InteractiveRequestSender>()
+   private val senderRegistrations = Channel<Unit>(Channel.CONFLATED)
 
    override fun registerSender(sender: InteractiveRequestSender) {
       registerSender("default", sender)
@@ -45,6 +47,7 @@ class InteractiveSessionManagerImpl(
          senders[watchId] = sender
          senders.size
       }
+      senderRegistrations.trySend(Unit)
       logcat { "Watch sender registered: id=$watchId, senderCount=$senderCount" }
    }
 
@@ -64,10 +67,13 @@ class InteractiveSessionManagerImpl(
       awaitResult(request, timeout)
 
    override suspend fun awaitResult(request: InteractiveTaskerRequest, timeout: Duration): InteractiveTaskerResult {
+      mutex.withLock {
+         if (activeSession != null) return InteractiveTaskerResult.Failed("Another interactive session is active")
+      }
+      val entry = awaitSender(timeout)
+         ?: return InteractiveTaskerResult.Failed("Watch connection is unavailable")
       val session = mutex.withLock {
          if (activeSession != null) return InteractiveTaskerResult.Failed("Another interactive session is active")
-         val entry = synchronized(senders) { senders.entries.firstOrNull() }
-            ?: return InteractiveTaskerResult.Failed("Watch connection is unavailable")
          ActiveSession(nextSessionId++, entry.key, entry.value, request, CompletableDeferred()).also { activeSession = it }
       }
       val coroutineContext = currentCoroutineContext()
@@ -80,6 +86,7 @@ class InteractiveSessionManagerImpl(
          } catch (e: Exception) {
             return InteractiveTaskerResult.Failed(e.message ?: "Failed to send interactive request")
          }
+
          val result = withTimeoutOrNull(timeout) { session.result.await() }
          if (result != null) {
             return result
@@ -94,6 +101,24 @@ class InteractiveSessionManagerImpl(
             }
             mutex.withLock { if (activeSession?.id == session.id) activeSession = null }
          }
+      }
+   }
+
+   private suspend fun awaitSender(timeout: Duration): Map.Entry<String, InteractiveRequestSender>? {
+      return withTimeoutOrNull(timeout) {
+         awaitRegisteredSender()
+      }
+   }
+
+   private suspend fun awaitRegisteredSender(): Map.Entry<String, InteractiveRequestSender> {
+      while (true) {
+         val sender = synchronized(senders) {
+            senders.entries.firstOrNull()
+         }
+         if (sender != null) {
+            return sender
+         }
+         senderRegistrations.receive()
       }
    }
 

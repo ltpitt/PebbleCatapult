@@ -30,6 +30,27 @@ class InteractiveSessionManagerImplTest {
    }
 
    @Test
+   fun `await result waits for a sender registered after it starts`() = runTest {
+      val manager = newManager(registerSender = false)
+      var sent: Pair<UInt, InteractiveTaskerRequest>? = null
+      val result = async {
+         manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
+      }
+      runCurrent()
+
+      manager.registerSender(
+         InteractiveRequestSender { sessionId, request ->
+            sent = sessionId to request
+         },
+      )
+      runCurrent()
+
+      sent shouldBe (1u to InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
+      manager.acceptResult("default", 1u, InteractiveTaskerResult.Confirmation(true))
+      result.await() shouldBe InteractiveTaskerResult.Confirmation(true)
+   }
+
+   @Test
    fun `response from another watch does not complete active session`() = runTest {
       val manager = newManager()
       val result = async {
@@ -142,6 +163,20 @@ class InteractiveSessionManagerImplTest {
       advanceTimeBy(1_001)
 
       result.await().shouldBeInstanceOf<InteractiveTaskerResult.TimedOut>().reason shouldBe "Interactive session timed out"
+   }
+
+   @Test
+   fun `unavailable connection waits before returning failure`() = runTest {
+      val manager = InteractiveSessionManagerImpl(timeout = 1.seconds)
+      val result = async {
+         manager.awaitResult(InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?"))
+      }
+      runCurrent()
+
+      result.isCompleted shouldBe false
+      advanceTimeBy(1_001)
+
+      result.await() shouldBe InteractiveTaskerResult.Failed("Watch connection is unavailable")
    }
 
    @Test
@@ -303,7 +338,9 @@ class InteractiveSessionManagerImplTest {
          InteractiveTaskerResult.Failed("send failed")
    }
 
-   private fun newManager() = InteractiveSessionManagerImpl(timeout = 1.seconds).also {
-      it.registerSender(InteractiveRequestSender { _, _ -> })
+   private fun newManager(registerSender: Boolean = true) = InteractiveSessionManagerImpl(timeout = 1.seconds).also {
+      if (registerSender) {
+         it.registerSender(InteractiveRequestSender { _, _ -> })
+      }
    }
 }

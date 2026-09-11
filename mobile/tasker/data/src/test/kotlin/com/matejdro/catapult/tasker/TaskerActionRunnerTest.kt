@@ -161,6 +161,10 @@ class TaskerActionRunnerTest {
 
       interactiveManager.requests.single() shouldBe
          InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?")
+      openController.isNextWatchappOpenForAutoSync() shouldBe true
+      pebbleSender.startedApps shouldContainExactly listOf(
+         FakePebbleSender.AppLifecycleEvent(WATCHAPP_UUID, null),
+      )
    }
 
    @Test
@@ -181,6 +185,10 @@ class TaskerActionRunnerTest {
       interactiveManager.requests.single() shouldBe InteractiveTaskerRequest.List(
          "Choose",
          listOf(InteractiveTaskerRequest.Item("a=b", "Line 1\nLine 2")),
+      )
+      openController.isNextWatchappOpenForAutoSync() shouldBe true
+      pebbleSender.startedApps shouldContainExactly listOf(
+         FakePebbleSender.AppLifecycleEvent(WATCHAPP_UUID, null),
       )
    }
 

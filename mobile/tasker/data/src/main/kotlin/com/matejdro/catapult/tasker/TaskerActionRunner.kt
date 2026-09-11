@@ -68,6 +68,7 @@ class TaskerActionRunner(
       val title = bundle.getString(BundleKeys.TITLE)?.takeIf { it.isNotBlank() }
          ?: throw TaskerInvalidInputException("Title is mandatory")
       val items = InteractiveTaskerItems.decode(bundle.getString(BundleKeys.ITEMS).orEmpty())
+      launchWatchappForInteractiveRequest()
       val result = interactiveSessionManager.awaitResult(InteractiveTaskerRequest.List(title, items), timeout(bundle))
       return result
    }
@@ -76,8 +77,14 @@ class TaskerActionRunner(
       val title = bundle.getString(BundleKeys.TITLE)?.takeIf { it.isNotBlank() }
          ?: throw TaskerInvalidInputException("Title is mandatory")
       val message = bundle.getString(BundleKeys.MESSAGE).orEmpty()
+      launchWatchappForInteractiveRequest()
       val result = interactiveSessionManager.awaitResult(InteractiveTaskerRequest.Confirmation(title, message), timeout(bundle))
       return result
+   }
+
+   private suspend fun launchWatchappForInteractiveRequest() {
+      openController.setNextWatchappOpenForAutoSync()
+      sender.startAppOnTheWatch(WATCHAPP_UUID)
    }
 
    private fun timeout(bundle: Bundle) =
