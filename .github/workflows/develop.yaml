@@ -29,8 +29,14 @@ jobs:
         shell: bash
         run: |
           OLD_VERSION=$(cat version.txt)
+          OLD_VERSION_REF=$(git rev-list -n 1 "$OLD_VERSION" 2>/dev/null || true)
+          if [[ -z "$OLD_VERSION_REF" ]]; then
+            echo "::warning::Version ref '$OLD_VERSION' was not found; using previous commit as the build baseline."
+            OLD_VERSION_REF=$(git rev-parse HEAD^)
+          fi
+
           echo "OLD_VERSION=$OLD_VERSION" >> $GITHUB_ENV
-          echo "OLD_VERSION_REF=$(git rev-list -n 1 $OLD_VERSION)" >> $GITHUB_ENV
+          echo "OLD_VERSION_REF=$OLD_VERSION_REF" >> $GITHUB_ENV
       - name: Check if there were any new fix or feature commits
         id: version-check
         uses: inovait/actions-common/bump-version@v11
@@ -60,11 +66,11 @@ jobs:
           VERSION_MINORPATCH=${OLD_VERSION##*.}
           
           VERSION_CHANGE_AFTER_FIRST_DOT="${VERSION_BUMP#*.}"
-          if [[ "${VERSION_BUMP%%.*}" == "1" ]] then
+          if [[ "${VERSION_BUMP%%.*}" == "1" ]]; then
             # Major version change
             VERSION_MAJOR=$(($VERSION_MAJOR+1))
             VERSION_MINORPATCH=0
-          elif [[ "${VERSION_CHANGE_AFTER_FIRST_DOT%%.*}" == "1" ]] then
+          elif [[ "${VERSION_CHANGE_AFTER_FIRST_DOT%%.*}" == "1" ]]; then
             # Minor version change
             VERSION_MINORPATCH=$(($VERSION_MINORPATCH/10*10+10))
           else
@@ -73,7 +79,7 @@ jobs:
             # Patch version change
           fi
           
-          if [[ $VERSION_MINORPATCH -ge 100 ]] then
+          if [[ $VERSION_MINORPATCH -ge 100 ]]; then
             VERSION_MAJOR=$(($VERSION_MAJOR+1))
             VERSION_MINORPATCH=0
           fi
@@ -86,15 +92,23 @@ jobs:
           echo "OLD_MOBILE_VERSION=$OLD_MOBILE_VERSION" >> $GITHUB_ENV
           OLD_WATCH_VERSION=$(cat watch/version.txt)
           echo "OLD_WATCH_VERSION=$OLD_WATCH_VERSION" >> $GITHUB_ENV
-          PREV_MOBILE_VERSION_REF=$(git rev-list -n 1 $OLD_MOBILE_VERSION)
-          PREV_WATCH_VERSION_REF=$(git rev-list -n 1 $OLD_WATCH_VERSION)
+          PREV_MOBILE_VERSION_REF=$(git rev-list -n 1 "$OLD_MOBILE_VERSION" 2>/dev/null || true)
+          PREV_WATCH_VERSION_REF=$(git rev-list -n 1 "$OLD_WATCH_VERSION" 2>/dev/null || true)
+          if [[ -z "$PREV_MOBILE_VERSION_REF" ]]; then
+            echo "::warning::Mobile version ref '$OLD_MOBILE_VERSION' was not found; using previous commit as the build baseline."
+            PREV_MOBILE_VERSION_REF=$(git rev-parse HEAD^)
+          fi
+          if [[ -z "$PREV_WATCH_VERSION_REF" ]]; then
+            echo "::warning::Watch version ref '$OLD_WATCH_VERSION' was not found; using previous commit as the build baseline."
+            PREV_WATCH_VERSION_REF=$(git rev-parse HEAD^)
+          fi
           
-          if [[ $(git log --oneline "$PREV_MOBILE_VERSION_REF..HEAD" -p mobile | wc -l) == "0" ]] then
+          if [[ $(git log --oneline "$PREV_MOBILE_VERSION_REF..HEAD" -p mobile | wc -l) == "0" ]]; then
             echo "BUILD_MOBILE=false" >> $GITHUB_ENV
           else
             echo "BUILD_MOBILE=true" >> $GITHUB_ENV
           fi
-          if [[ $(git log --oneline "$PREV_WATCH_VERSION_REF..HEAD" -p watch | wc -l) == "0" ]] then
+          if [[ $(git log --oneline "$PREV_WATCH_VERSION_REF..HEAD" -p watch | wc -l) == "0" ]]; then
             echo "BUILD_WATCH=false" >> $GITHUB_ENV
           else
             echo "BUILD_WATCH=true" >> $GITHUB_ENV
@@ -234,10 +248,10 @@ jobs:
       - name: Add counterpart link to the changelog
         run: |
           CHANGELOG_EXTRA=""
-          if [[ "$BUILD_WATCH" == "false" ]] then
+          if [[ "$BUILD_WATCH" == "false" ]]; then
             CHANGELOG_EXTRA="$CHANGELOG_EXTRA\n\nFor the watchapp, download the [$OLD_WATCH_VERSION](https://github.com/matejdro/PebbleCatapult/releases/tag/$OLD_WATCH_VERSION) version."
           fi
-          if [[ "$BUILD_MOBILE" == "false" ]] then
+          if [[ "$BUILD_MOBILE" == "false" ]]; then
             CHANGELOG_EXTRA="$CHANGELOG_EXTRA\n\nFor the phone app, download the [$OLD_MOBILE_VERSION](https://github.com/matejdro/PebbleCatapult/releases/tag/$OLD_MOBILE_VERSION) version."
           fi
 
