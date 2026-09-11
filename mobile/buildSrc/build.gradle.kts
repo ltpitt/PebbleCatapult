@@ -1,4 +1,5 @@
 import dev.detekt.gradle.Detekt
+import java.io.File
 
 plugins {
    `kotlin-dsl`
@@ -50,9 +51,22 @@ dependencies {
    detektPlugins(libs.detekt.compose)
 }
 
+fun gitHooksDir(): File {
+   val repositoryRoot = rootDir.resolve("../..").canonicalFile
+   val process = ProcessBuilder("git", "-C", repositoryRoot.absolutePath, "rev-parse", "--git-path", "hooks")
+      .redirectErrorStream(true)
+      .start()
+   val output = process.inputStream.bufferedReader().readText().trim()
+
+   check(process.waitFor() == 0) { "Unable to resolve git hooks directory: $output" }
+
+   val hooksDir = File(output)
+   return if (hooksDir.isAbsolute) hooksDir else repositoryRoot.resolve(output)
+}
+
 tasks.register("commit-hooks", Copy::class) {
    from("$rootDir/../config/hooks/")
-   into("$rootDir/../../.git/hooks")
+   into(gitHooksDir())
 }
 
 afterEvaluate {
