@@ -48,7 +48,6 @@ class WatchappConnectionImpl(
    private var watchBufferSize: Int = 0
 
    init {
-      interactiveSessionManager.registerSender(watch.toString(), this)
       coroutineScope.launch {
          try {
             packetQueue.runQueue()
@@ -212,6 +211,7 @@ class WatchappConnectionImpl(
       val watchVersion = data.requireUint(2u).toUShort()
       watchBufferSize = data.requireUint(3u).toInt()
       logcat { "Watch data: version=$watchVersion, buffer size=$watchBufferSize" }
+      interactiveSessionManager.registerSender(watch.toString(), this)
 
       bucketSyncWatchLoop.sendFirstPacketAndStartLoop(
          mapOfNotNull(

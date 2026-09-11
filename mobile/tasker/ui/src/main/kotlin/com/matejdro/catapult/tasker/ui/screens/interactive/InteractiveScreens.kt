@@ -21,7 +21,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.matejdro.catapult.tasker.BundleKeys
-import com.matejdro.catapult.tasker.TaskerPluginConstants
 import com.matejdro.catapult.tasker.TaskerAction
 import com.matejdro.catapult.tasker.ui.TaskerConfigurationActivity
 import kotlinx.serialization.Serializable
@@ -34,6 +33,7 @@ private const val DEFAULT_LIST_TITLE = "Choose a location"
 private const val DEFAULT_LIST_ITEMS =
    """[{"id":"home","value":"Home"},{"id":"work","value":"Work"},{"id":"other","value":"Other"}]"""
 private const val DEFAULT_TIMEOUT_MS = 60_000L
+private const val DEFAULT_TASKER_TIMEOUT_MS = 3_599_000
 
 @InjectNavigationScreen
 class InteractiveListScreen : Screen<InteractiveListScreenKey>() {
@@ -87,13 +87,10 @@ class InteractiveListScreen : Screen<InteractiveListScreenKey>() {
                      putString(BundleKeys.TITLE, title)
                      putString(BundleKeys.ITEMS, items)
                      putLong(BundleKeys.TIMEOUT_MS, timeout.toLongOrNull() ?: DEFAULT_TIMEOUT_MS)
-                     putString(
-                        TaskerPluginConstants.VARIABLE_REPLACE_KEYS,
-                        "%catapult_status %catapult_result_id %catapult_result_value",
-                     )
                   },
                   title,
                   finish = true,
+                  requestedTimeoutMs = DEFAULT_TASKER_TIMEOUT_MS,
                )
             },
             modifier = Modifier.fillMaxWidth(),
@@ -125,10 +122,10 @@ class InteractiveConfirmationScreen : Screen<InteractiveConfirmationScreenKey>()
                      putString(BundleKeys.TITLE, title)
                      putString(BundleKeys.MESSAGE, message)
                      putLong(BundleKeys.TIMEOUT_MS, timeout.toLongOrNull() ?: DEFAULT_TIMEOUT_MS)
-                     putString(TaskerPluginConstants.VARIABLE_REPLACE_KEYS, "%catapult_status")
                   },
                   title,
                   finish = true,
+                  requestedTimeoutMs = DEFAULT_TASKER_TIMEOUT_MS,
                )
             },
          ) {

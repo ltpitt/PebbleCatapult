@@ -13,13 +13,17 @@ typedef struct {
     MenuLayer* menu;
     TextLayer* title_layer;
     TextLayer* message_layer;
+    bool resolved;
 } InteractiveConfirm;
 
 static InteractiveConfirm* active;
 
 void window_interactive_confirm_dismiss(void)
 {
-    if (active) window_stack_pop(false);
+    if (active) {
+        active->resolved = true;
+        window_stack_pop(false);
+    }
 }
 
 static uint16_t rows(MenuLayer* menu, uint16_t section, void* context) { return 2; }
@@ -27,27 +31,17 @@ static void draw(GContext* ctx, const Layer* cell, MenuIndex* index, void* conte
 {
     menu_cell_basic_draw(ctx, cell, index->row == 0 ? "Accept" : "Cancel", NULL, NULL);
 }
-static void click(ClickRecognizerRef recognizer, void* context)
+static void select_callback(MenuLayer* menu, MenuIndex* index, void* context)
 {
     InteractiveConfirm* confirm = context;
-    if (click_recognizer_get_button_id(recognizer) == BUTTON_ID_BACK) {
-        if (confirm->cancel) confirm->cancel(confirm->session, confirm->context);
-    } else {
-        MenuIndex index = menu_layer_get_selected_index(confirm->menu);
-        if (confirm->confirm) confirm->confirm(confirm->session, index.row == 0, confirm->context);
-    }
+    confirm->resolved = true;
+    if (confirm->confirm) confirm->confirm(confirm->session, index->row == 0, confirm->context);
     window_stack_pop(true);
-}
-static void click_config(void* context)
-{
-    InteractiveConfirm* confirm = context;
-    menu_layer_set_click_config_onto_window(confirm->menu, confirm->window);
-    window_single_click_subscribe(BUTTON_ID_SELECT, click);
-    window_single_click_subscribe(BUTTON_ID_BACK, click);
 }
 static void unload(Window* window)
 {
     InteractiveConfirm* confirm = window_get_user_data(window);
+    if (!confirm->resolved && confirm->cancel) confirm->cancel(confirm->session, confirm->context);
     menu_layer_destroy(confirm->menu); text_layer_destroy(confirm->title_layer);
     text_layer_destroy(confirm->message_layer);
     if (active == confirm) active = NULL;
@@ -85,9 +79,9 @@ bool window_interactive_confirm_show(
     text_layer_set_text(confirm->title_layer, confirm->title); text_layer_set_font(confirm->title_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD));
     text_layer_set_text(confirm->message_layer, confirm->message); text_layer_set_font(confirm->message_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
     bounds.origin.y += 64; bounds.size.h -= 64; layer_set_frame(menu_layer_get_layer(confirm->menu), bounds);
-    menu_layer_set_callbacks(confirm->menu, confirm, (MenuLayerCallbacks){ .get_num_rows = rows, .draw_row = draw });
+    menu_layer_set_callbacks(confirm->menu, confirm, (MenuLayerCallbacks){ .get_num_rows = rows, .draw_row = draw, .select_click = select_callback });
     layer_add_child(root, text_layer_get_layer(confirm->title_layer)); layer_add_child(root, text_layer_get_layer(confirm->message_layer)); layer_add_child(root, menu_layer_get_layer(confirm->menu));
-    window_set_click_config_provider_with_context(confirm->window, click_config, confirm);
+    menu_layer_set_click_config_onto_window(confirm->menu, confirm->window);
     window_set_window_handlers(confirm->window, (WindowHandlers){ .unload = unload }); window_set_user_data(confirm->window, confirm);
     active = confirm; window_stack_push(confirm->window, true); return true;
 }

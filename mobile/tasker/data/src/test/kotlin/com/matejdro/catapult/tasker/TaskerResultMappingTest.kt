@@ -6,7 +6,10 @@ import org.junit.jupiter.api.Test
 class TaskerResultMappingTest {
    @Test
    fun `notification success maps success status`() {
-      InteractiveTaskerResult.Success.toTaskerBundle().getString("%catapult_status") shouldBe "success"
+      val bundle = InteractiveTaskerResult.Success.toTaskerBundle()
+      bundle.getString("%catapult_status") shouldBe "success"
+      bundle.getString("%catapult_result_id") shouldBe ""
+      bundle.getString("%catapult_result_value") shouldBe ""
    }
 
    @Test
@@ -22,6 +25,8 @@ class TaskerResultMappingTest {
    fun `failure maps status and Tasker error`() {
       val bundle = InteractiveTaskerResult.TimedOut("expired").toTaskerBundle()
       bundle.getString("%catapult_status") shouldBe "timeout"
+      bundle.getString("%catapult_result_id") shouldBe ""
+      bundle.getString("%catapult_result_value") shouldBe ""
       bundle.getString("%err") shouldBe "1"
       bundle.getString("%errmsg") shouldBe "expired"
    }

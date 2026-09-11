@@ -6,8 +6,8 @@ typedef struct {
     uint32_t session;
     uint8_t count;
     char title[65];
-    char ids[32][33];
-    char values[32][65];
+    const char (*ids)[33];
+    const char (*values)[65];
     WindowInteractiveListSelectionCallback selection;
     WindowInteractiveListCancelCallback cancel;
     WindowInteractiveListErrorCallback error;
@@ -15,13 +15,17 @@ typedef struct {
     Window* window;
     MenuLayer* menu;
     TextLayer* title_layer;
+    bool resolved;
 } InteractiveList;
 
 static InteractiveList* active;
 
 void window_interactive_list_dismiss(void)
 {
-    if (active) window_stack_pop(false);
+    if (active) {
+        active->resolved = true;
+        window_stack_pop(false);
+    }
 }
 
 static uint16_t rows(MenuLayer* menu, uint16_t section, void* context)
@@ -40,30 +44,19 @@ static void draw(GContext* ctx, const Layer* cell, MenuIndex* index, void* conte
     menu_cell_basic_draw(ctx, cell, list->values[index->row], list->ids[index->row], NULL);
 }
 
-static void click(ClickRecognizerRef recognizer, void* context)
+static void select_callback(MenuLayer* menu, MenuIndex* index, void* context)
 {
     InteractiveList* list = context;
-    if (click_recognizer_get_button_id(recognizer) == BUTTON_ID_BACK) {
-        if (list->cancel) list->cancel(list->session, list->context);
-    } else {
-        MenuIndex index = menu_layer_get_selected_index(list->menu);
-        if (index.row < list->count && list->selection)
-            list->selection(list->session, list->ids[index.row], list->values[index.row], list->context);
-    }
+    list->resolved = true;
+    if (index->row < list->count && list->selection)
+        list->selection(list->session, list->ids[index->row], list->values[index->row], list->context);
     window_stack_pop(true);
-}
-
-static void click_config(void* context)
-{
-    InteractiveList* list = context;
-    menu_layer_set_click_config_onto_window(list->menu, list->window);
-    window_single_click_subscribe(BUTTON_ID_SELECT, click);
-    window_single_click_subscribe(BUTTON_ID_BACK, click);
 }
 
 static void unload(Window* window)
 {
     InteractiveList* list = window_get_user_data(window);
+    if (!list->resolved && list->cancel) list->cancel(list->session, list->context);
     menu_layer_destroy(list->menu);
     text_layer_destroy(list->title_layer);
     if (active == list) active = NULL;
@@ -89,10 +82,8 @@ bool window_interactive_list_show(
     list->session = session;
     list->count = count;
     strncpy(list->title, title, sizeof(list->title) - 1);
-    for (uint8_t i = 0; i < count; i++) {
-        strncpy(list->ids[i], ids[i], sizeof(list->ids[i]) - 1);
-        strncpy(list->values[i], values[i], sizeof(list->values[i]) - 1);
-    }
+    list->ids = ids;
+    list->values = values;
     list->selection = selection; list->cancel = cancel; list->error = error; list->context = context;
     list->window = window_create();
     if (!list->window) { free(list); if (error) error(session, "Unable to display interactive list", context); return false; }
@@ -111,10 +102,11 @@ bool window_interactive_list_show(
     GRect bounds = layer_get_bounds(root); bounds.origin.y += 26; bounds.size.h -= 26;
     layer_set_frame(menu_layer_get_layer(list->menu), bounds);
     menu_layer_set_callbacks(list->menu, list,
-        (MenuLayerCallbacks){ .get_num_rows = rows, .get_cell_height = cell_height, .draw_row = draw });
+        (MenuLayerCallbacks){ .get_num_rows = rows, .get_cell_height = cell_height, .draw_row = draw,
+            .select_click = select_callback });
     layer_add_child(root, text_layer_get_layer(list->title_layer));
     layer_add_child(root, menu_layer_get_layer(list->menu));
-    window_set_click_config_provider_with_context(list->window, click_config, list);
+    menu_layer_set_click_config_onto_window(list->menu, list->window);
     window_set_window_handlers(list->window, (WindowHandlers){ .unload = unload });
     window_set_user_data(list->window, list);
     active = list;

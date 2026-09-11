@@ -75,13 +75,16 @@ class WatchappConnectionImplTest {
 
    private class RecordingInteractiveSessionManager : InteractiveSessionManager {
       val results = mutableListOf<Pair<UInt, InteractiveTaskerResult>>()
+      var registeredSenderCount = 0
       var activeSessionId: UInt? = 42u
       var completedActiveSession = false
 
       override suspend fun awaitResult(request: InteractiveTaskerRequest): InteractiveTaskerResult =
          error("Not used")
 
-      override fun registerSender(sender: com.matejdro.catapult.tasker.InteractiveRequestSender) = Unit
+      override fun registerSender(sender: com.matejdro.catapult.tasker.InteractiveRequestSender) {
+         registeredSenderCount++
+      }
 
       override fun cancelActive(reason: String) = Unit
 
@@ -122,6 +125,7 @@ class WatchappConnectionImplTest {
       runCurrent()
 
       result shouldBe ReceiveResult.Ack
+      interactiveSessionManager.registeredSenderCount shouldBe 1
 
       sender.sentData.shouldContainExactly(
          mapOf(

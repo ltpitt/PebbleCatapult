@@ -31,6 +31,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toKotlinInstant
 
 class TaskerActionRunnerTest {
@@ -66,6 +67,14 @@ class TaskerActionRunnerTest {
             is InteractiveTaskerRequest.Confirmation -> InteractiveTaskerResult.Confirmation(true)
          }
       }
+      override suspend fun awaitResult(
+         request: InteractiveTaskerRequest,
+         timeout: kotlin.time.Duration,
+      ): InteractiveTaskerResult {
+         observedTimeout = timeout
+         return awaitResult(request)
+      }
+      var observedTimeout: kotlin.time.Duration? = null
       override fun cancelActive(reason: String) = Unit
       override suspend fun acceptResult(watchId: String, sessionId: UInt, result: InteractiveTaskerResult) = Unit
    }
@@ -151,6 +160,8 @@ class TaskerActionRunnerTest {
 
    @Test
    fun `Run interactive confirmation through session manager`() = scope.runTest {
+      openController.setNextWatchappOpenForAutoSync()
+
       runner.run(
          Bundle().apply {
             putString(BundleKeys.ACTION, TaskerAction.SHOW_CONFIRMATION.name)
@@ -161,7 +172,7 @@ class TaskerActionRunnerTest {
 
       interactiveManager.requests.single() shouldBe
          InteractiveTaskerRequest.Confirmation("Confirm", "Proceed?")
-      openController.isNextWatchappOpenForAutoSync() shouldBe true
+      openController.isNextWatchappOpenForAutoSync() shouldBe false
       pebbleSender.startedApps shouldContainExactly listOf(
          FakePebbleSender.AppLifecycleEvent(WATCHAPP_UUID, null),
       )
@@ -169,6 +180,8 @@ class TaskerActionRunnerTest {
 
    @Test
    fun `Run interactive list from JSON`() = scope.runTest {
+      openController.setNextWatchappOpenForAutoSync()
+
       runner.run(
          Bundle().apply {
             putString(BundleKeys.ACTION, TaskerAction.SHOW_LIST.name)
@@ -186,10 +199,24 @@ class TaskerActionRunnerTest {
          "Choose",
          listOf(InteractiveTaskerRequest.Item("a=b", "Line 1\nLine 2")),
       )
-      openController.isNextWatchappOpenForAutoSync() shouldBe true
+      openController.isNextWatchappOpenForAutoSync() shouldBe false
       pebbleSender.startedApps shouldContainExactly listOf(
          FakePebbleSender.AppLifecycleEvent(WATCHAPP_UUID, null),
       )
+   }
+
+   @Test
+   fun `Zero interactive timeout uses the default`() = scope.runTest {
+      runner.run(
+         Bundle().apply {
+            putString(BundleKeys.ACTION, TaskerAction.SHOW_LIST.name)
+            putString(BundleKeys.TITLE, "Choose")
+            putString(BundleKeys.ITEMS, """[{"id":"home","value":"Home"}]""")
+            putLong(BundleKeys.TIMEOUT_MS, 0)
+         },
+      )
+
+      interactiveManager.observedTimeout shouldBe 60.seconds
    }
 
    @Test

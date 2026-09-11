@@ -23,7 +23,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.matejdro.catapult.tasker.BundleKeys
 import com.matejdro.catapult.tasker.TaskerAction
-import com.matejdro.catapult.tasker.TaskerPluginConstants
 import com.matejdro.catapult.tasker.ui.TaskerConfigurationActivity
 import kotlinx.serialization.Serializable
 import si.inova.kotlinova.core.activity.requireActivity
@@ -71,7 +70,6 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
                putString(BundleKeys.TITLE, title)
                putString(BundleKeys.MESSAGE, body)
                putLong(BundleKeys.NOTIFICATION_DURATION_MS, durationMs)
-               putString(TaskerPluginConstants.VARIABLE_REPLACE_KEYS, "%catapult_status")
             },
             title,
             finish = true,

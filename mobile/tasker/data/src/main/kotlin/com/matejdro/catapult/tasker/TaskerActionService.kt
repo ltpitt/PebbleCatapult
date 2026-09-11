@@ -129,14 +129,16 @@ class TaskerActionService : Service() {
 }
 
 private fun failureBundle(message: String) = Bundle().apply {
-   putString("%catapult_status", "failed")
+   putString(RESULT_STATUS_KEY, "failed")
+   putString(RESULT_ID_KEY, "")
+   putString(RESULT_VALUE_KEY, "")
    putString("%err", "1")
    putString("%errmsg", message)
 }
 
 internal fun InteractiveTaskerResult.toTaskerBundle() = Bundle().apply {
    putString(
-      "%catapult_status",
+      RESULT_STATUS_KEY,
       when (this@toTaskerBundle) {
          InteractiveTaskerResult.Success -> "success"
          is InteractiveTaskerResult.Selection -> "success"
@@ -146,15 +148,21 @@ internal fun InteractiveTaskerResult.toTaskerBundle() = Bundle().apply {
          is InteractiveTaskerResult.Failed -> "failed"
       },
    )
+   putString(RESULT_ID_KEY, "")
+   putString(RESULT_VALUE_KEY, "")
    if (this@toTaskerBundle is InteractiveTaskerResult.Selection) {
-      putString("%catapult_result_id", this@toTaskerBundle.id)
-      putString("%catapult_result_value", this@toTaskerBundle.value)
+      putString(RESULT_ID_KEY, this@toTaskerBundle.id)
+      putString(RESULT_VALUE_KEY, this@toTaskerBundle.value)
    }
    if (!this@toTaskerBundle.isSuccess()) {
       putString("%err", "1")
       putString("%errmsg", this@toTaskerBundle.reason())
    }
 }
+
+private const val RESULT_STATUS_KEY = "%catapult_status"
+private const val RESULT_ID_KEY = "%catapult_result_id"
+private const val RESULT_VALUE_KEY = "%catapult_result_value"
 
 internal fun InteractiveTaskerResult.isSuccess() =
    this is InteractiveTaskerResult.Success ||

@@ -83,14 +83,17 @@ class TaskerActionRunner(
    }
 
    private suspend fun launchWatchappForInteractiveRequest() {
-      openController.setNextWatchappOpenForAutoSync()
+      // Interactive UI must stay open on the watch, so it must NOT arm auto-close
+      // after sync. Clear any stale arming left by a previous sync action.
+      openController.resetNextWatchappOpen()
       sender.startAppOnTheWatch(WATCHAPP_UUID)
    }
 
    private fun timeout(bundle: Bundle) =
       bundle.getLong(BundleKeys.TIMEOUT_MS, DEFAULT_INTERACTIVE_TIMEOUT_MS)
-         .coerceAtLeast(MINIMUM_INTERACTIVE_TIMEOUT_MS)
-         .milliseconds
+         .takeIf { it > 0 }
+         ?.milliseconds
+         ?: DEFAULT_INTERACTIVE_TIMEOUT_MS.milliseconds
 
    @Suppress("ThrowsCount") // Each notification failure maps to an explicit companion result.
    private fun runNotification(bundle: Bundle): InteractiveTaskerResult {
@@ -285,7 +288,6 @@ class TaskerActionRunner(
 }
 
 private const val DEFAULT_INTERACTIVE_TIMEOUT_MS = 60_000L
-private const val MINIMUM_INTERACTIVE_TIMEOUT_MS = 1L
 private const val MAX_NOTIFICATION_TITLE_SIZE_BYTES = 64
 private const val MAX_NOTIFICATION_BODY_SIZE_BYTES = 128
 private const val MINIMUM_NOTIFICATION_DURATION_MS = 0L
