@@ -75,14 +75,6 @@ class WatchappConnectionImpl(
       }
    }
 
-   override suspend fun sendNotification(packet: PebbleDictionary) {
-      throw UnsupportedOperationException(CUSTOM_NOTIFICATION_ERROR)
-   }
-
-   override suspend fun sendNotification(notification: WatchNotificationMessage.Show) {
-      throw UnsupportedOperationException(CUSTOM_NOTIFICATION_ERROR)
-   }
-
    override suspend fun send(sessionId: UInt, request: InteractiveTaskerRequest) {
       val message = when (request) {
          is InteractiveTaskerRequest.List -> InteractiveWatchMessage.ShowList(
@@ -285,7 +277,5 @@ private fun <K, V> mapOfNotNull(vararg pairs: Pair<K, V>?): Map<K, V> =
    pairs.filterNotNull().toMap()
 
 private const val INTERACTIVE_SEND_TIMEOUT = 5_000L
-private const val CUSTOM_NOTIFICATION_ERROR =
-   "Custom watch notification packets are obsolete; post Android notifications via WatchNotificationSender instead."
 
 private class InteractiveSendTimeoutException : Exception()
