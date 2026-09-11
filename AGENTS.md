@@ -57,11 +57,45 @@ established a positive buffer size — registering on connection construction ra
 ahead of the welcome and fails interactive sends as "Watch connection is
 unavailable".
 
+### Returning variables to Tasker (and showing them on the plugin screen)
+
+Interactive actions return their result as Tasker local variables in the bundle
+passed to `TaskerPlugin.Setting.signalFinish` — e.g. `%catapult_status`,
+`%catapult_result_id`, `%catapult_result_value` (see `TaskerResultKeys`). A task
+can use these in the next action (e.g. Flash `%catapult_result_value`).
+
+For Tasker to **show** these on the action's config screen and offer them for
+autocomplete, the configuration activity must *declare* them: attach the
+`net.dinglisch.android.tasker.RELEVANT_VARIABLES` string-array extra to the
+result Intent (via `TaskerPlugin.addRelevantVariableList`, or the
+`TaskerPluginConstants.RELEVANT_VARIABLES` key). Each entry is a `\n`-separated
+`name\nlabel\ninfo` string; names must be lower-case local vars. Returning the
+variables at runtime works without this, but there is no config-time guidance
+until they are declared. Keep the declared names in sync with the runtime keys
+by sourcing both from `TaskerResultKeys`.
+
 ## Planning
 
 Apply these rules to every implementation plan and screen variant. Before
 implementing a feature, inspect the relevant official Pebble examples and
 PebbleKit Android 2 APIs, then document any necessary deviation.
+
+### Incoming AppMessage integers are always 32-bit (PebbleKit width normalization)
+
+**PebbleKit Android delivers every received number as `UInt32`/`Int32`, regardless
+of the width the watchapp wrote** (see `BasePebbleListenerService` KDoc in
+`io.rebble.pebblekit2.client`). So a watch that writes `dict_write_uint16(4, …)`
+or `dict_write_uint8(5, …)` arrives on the phone as `PebbleDictionaryItem.UInt32`.
+
+Never decode incoming numeric fields with a fixed-width `as? UInt16`/`UInt8`
+cast — it returns null and the whole packet is rejected. This bit the interactive
+`SHOW_LIST` round-trip: the watch's selection reply (`total`=uint16,
+`terminal`=uint8, confirmation flag=uint8) was NACKed as "Missing chunk count",
+so the session timed out. It worked on the emulator (pypkjs preserves widths) but
+never on a real phone. Read incoming integers width-agnostically (accept
+UInt8/UInt16/UInt32) — see `requireUnsigned` in `InteractiveWatchMessage.kt`. The
+**outgoing** send path may still use exact widths; only the decode path must be
+width-agnostic.
 
 ## Debugging & logs
 

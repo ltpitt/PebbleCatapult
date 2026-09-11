@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.matejdro.catapult.tasker.BundleKeys
 import com.matejdro.catapult.tasker.TaskerAction
+import com.matejdro.catapult.tasker.TaskerResultKeys
 import com.matejdro.catapult.tasker.ui.TaskerConfigurationActivity
 import kotlinx.serialization.Serializable
 import si.inova.kotlinova.core.activity.requireActivity
@@ -91,6 +92,7 @@ class InteractiveListScreen : Screen<InteractiveListScreenKey>() {
                   title,
                   finish = true,
                   requestedTimeoutMs = DEFAULT_TASKER_TIMEOUT_MS,
+                  relevantVariables = interactiveListRelevantVariables(),
                )
             },
             modifier = Modifier.fillMaxWidth(),
@@ -147,3 +149,9 @@ internal fun listItems(savedItems: String?): String =
 
 internal fun listTimeout(savedTimeout: Long?): Long =
    savedTimeout ?: DEFAULT_TIMEOUT_MS
+
+internal fun interactiveListRelevantVariables(): Array<String> = arrayOf(
+   "${TaskerResultKeys.STATUS}\nCatapult status\nsuccess, cancelled, timeout or failed",
+   "${TaskerResultKeys.RESULT_ID}\nSelected item id\nThe id of the item the user chose on the watch",
+   "${TaskerResultKeys.RESULT_VALUE}\nSelected item value\nThe label of the item the user chose on the watch",
+)

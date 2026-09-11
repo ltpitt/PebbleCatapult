@@ -160,9 +160,9 @@ internal fun InteractiveTaskerResult.toTaskerBundle() = Bundle().apply {
    }
 }
 
-private const val RESULT_STATUS_KEY = "%catapult_status"
-private const val RESULT_ID_KEY = "%catapult_result_id"
-private const val RESULT_VALUE_KEY = "%catapult_result_value"
+private const val RESULT_STATUS_KEY = TaskerResultKeys.STATUS
+private const val RESULT_ID_KEY = TaskerResultKeys.RESULT_ID
+private const val RESULT_VALUE_KEY = TaskerResultKeys.RESULT_VALUE
 
 internal fun InteractiveTaskerResult.isSuccess() =
    this is InteractiveTaskerResult.Success ||

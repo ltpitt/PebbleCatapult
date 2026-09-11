@@ -82,11 +82,13 @@ abstract class TaskerConfigurationActivity : ComponentActivity() {
       message: String,
       finish: Boolean = false,
       requestedTimeoutMs: Int? = null,
+      relevantVariables: Array<String>? = null,
    ) {
       val intent = Intent().apply {
          putExtra(TaskerPluginConstants.EXTRA_STRING_BLURB, message)
          putExtra(TaskerPluginConstants.EXTRA_BUNDLE, bundle)
          requestedTimeoutMs?.let { putExtra(TaskerPluginConstants.REQUESTED_TIMEOUT, it) }
+         relevantVariables?.let { putExtra(TaskerPluginConstants.RELEVANT_VARIABLES, it) }
       }
 
       setResult(RESULT_OK, intent)

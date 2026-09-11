@@ -106,6 +106,33 @@ class InteractiveWatchMessageTest {
    }
 
    @Test
+   fun `selection decodes when watch delivers all integers as uint32`() {
+      val packet: Map<UInt, PebbleDictionaryItem> = mapOf(
+         0u to PebbleDictionaryItem.UInt32(8u),
+         1u to PebbleDictionaryItem.UInt32(42u),
+         3u to PebbleDictionaryItem.UInt32(0u),
+         4u to PebbleDictionaryItem.UInt32(1u),
+         5u to PebbleDictionaryItem.UInt32(1u),
+         8u to PebbleDictionaryItem.Text("home"),
+         7u to PebbleDictionaryItem.Text("Home"),
+      )
+      InteractiveWatchMessage.decode(packet) shouldBe InteractiveWatchMessage.ListSelection(42u, "home", "Home")
+   }
+
+   @Test
+   fun `confirmation result decodes when watch delivers all integers as uint32`() {
+      val packet: Map<UInt, PebbleDictionaryItem> = mapOf(
+         0u to PebbleDictionaryItem.UInt32(9u),
+         1u to PebbleDictionaryItem.UInt32(42u),
+         3u to PebbleDictionaryItem.UInt32(0u),
+         4u to PebbleDictionaryItem.UInt32(1u),
+         5u to PebbleDictionaryItem.UInt32(1u),
+         8u to PebbleDictionaryItem.UInt32(1u),
+      )
+      InteractiveWatchMessage.decode(packet) shouldBe InteractiveWatchMessage.ConfirmationResult(42u, true)
+   }
+
+   @Test
    fun `selection requires one terminal chunk`() {
       val packet = InteractiveWatchMessage.ListSelection(42u, "home", "Home")
          .toPacket(256)

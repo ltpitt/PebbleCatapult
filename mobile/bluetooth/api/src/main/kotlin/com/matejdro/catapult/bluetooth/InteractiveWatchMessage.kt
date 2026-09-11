@@ -289,20 +289,20 @@ private fun decodeMetadata(data: PebbleDictionary): DecodedMessageMetadata {
       key = KEY_SEQUENCE,
       message = "Missing chunk sequence",
    ).value
-   val totalChunks = requireValue<PebbleDictionaryItem.UInt16>(
+   val totalChunks = requireUnsigned(
       data = data,
       key = KEY_TOTAL,
       message = "Missing chunk count",
-   ).value
+   ).toUShort()
    require(totalChunks > FIRST_TOTAL_CHUNKS.toUShort()) { "Chunk count must be positive" }
    require(sequence.toLong() < totalChunks.toLong()) { "Chunk sequence is out of range" }
-   val terminalMarker = requireValue<PebbleDictionaryItem.UInt8>(
+   val terminalMarker = requireUnsigned(
       data = data,
       key = KEY_TERMINAL,
       message = "Missing terminal marker",
-   ).value
-   require(terminalMarker == FLAG_FALSE || terminalMarker == FLAG_TRUE) { "Invalid terminal marker" }
-   val terminal = terminalMarker == FLAG_TRUE
+   )
+   require(terminalMarker == FLAG_FALSE.toULong() || terminalMarker == FLAG_TRUE.toULong()) { "Invalid terminal marker" }
+   val terminal = terminalMarker == FLAG_TRUE.toULong()
    require(terminal == (sequence.toLong() == totalChunks.toLong() - LAST_CHUNK_OFFSET)) {
       "Invalid terminal marker for chunk"
    }
@@ -416,15 +416,15 @@ private fun decodeSimplePacket(
       }
       InteractiveWatchMessage.PACKET_CONFIRMATION_RESULT -> {
          requireTerminal(messageType = "Result")
-         val result = requireValue<PebbleDictionaryItem.UInt8>(
+         val result = requireUnsigned(
             data = data,
             key = KEY_ITEM_ID,
             message = "Missing confirmation result",
-         ).value
-         require(result == FLAG_FALSE || result == FLAG_TRUE) { "Invalid confirmation result" }
+         )
+         require(result == FLAG_FALSE.toULong() || result == FLAG_TRUE.toULong()) { "Invalid confirmation result" }
          InteractiveWatchMessage.ConfirmationResult(
             sessionId = metadata.sessionId,
-            accepted = result == FLAG_TRUE,
+            accepted = result == FLAG_TRUE.toULong(),
          )
       }
       InteractiveWatchMessage.PACKET_CANCEL_OR_ERROR -> {
@@ -443,6 +443,19 @@ private inline fun <reified T : PebbleDictionaryItem> requireValue(
    key: UInt,
    message: String,
 ): T = data[key] as? T ?: throw IllegalArgumentException(message)
+
+// PebbleKit Android delivers every received integer as UInt32/Int32 regardless of the
+// width the watch wrote, so incoming numeric fields must be read width-agnostically.
+private fun requireUnsigned(
+   data: PebbleDictionary,
+   key: UInt,
+   message: String,
+): ULong = when (val item = data[key]) {
+   is PebbleDictionaryItem.UInt8 -> item.value.toULong()
+   is PebbleDictionaryItem.UInt16 -> item.value.toULong()
+   is PebbleDictionaryItem.UInt32 -> item.value.toULong()
+   else -> throw IllegalArgumentException(message)
+}
 
 private fun requireText(
    data: PebbleDictionary,
