@@ -63,9 +63,7 @@ static void custom_status_bar_paint(Layer* layer, GContext* ctx)
     graphics_context_set_fill_color(ctx, background_color);
     graphics_fill_rect(ctx, layer_get_frame(layer), 0, GCornerNone);
 
-    const GRect whole_status_size = layer_get_bounds(layer);
-
-    const uint16_t icon_x = whole_status_size.size.w - CLOCK_WIDTH - 1 - 14 - RIGHTMOST_PADDING;
+    const uint16_t icon_x = 0;
     if (sending_error != APP_MSG_OK)
     {
         graphics_draw_bitmap_in_rect(ctx, indicator_error, GRect(icon_x + 3, 3, 9, 10));

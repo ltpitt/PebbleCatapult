@@ -232,7 +232,6 @@ static void on_task_starting_result(bool success)
     if (success)
     {
         vibes_short_pulse();
-        window_stack_pop_all(true);
     }
     else
     {
