@@ -81,13 +81,14 @@ class TaskerActionService : Service() {
             )
             throw e
          } catch (e: Exception) {
-            logcat { "Tasker action failed: ${e::class.simpleName}: ${e.message ?: "no message"}" }
+            val exceptionName = e.javaClass.simpleName.ifEmpty { "UnknownException" }
+            logcat { "Tasker action failed: $exceptionName: ${e.message ?: "no message"}" }
             errorReporter.report(e)
             TaskerPlugin.Setting.signalFinish(
                this@TaskerActionService,
                intent,
                TaskerPluginConstants.RESULT_CODE_FAILED,
-               failureBundle(e.message ?: e::class.simpleName ?: "Tasker action failed"),
+               failureBundle(e.message ?: exceptionName),
             )
          } finally {
             val leftTasks = runningTasks.decrementAndGet()

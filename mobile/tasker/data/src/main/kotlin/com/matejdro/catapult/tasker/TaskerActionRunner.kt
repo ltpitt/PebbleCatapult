@@ -86,7 +86,7 @@ class TaskerActionRunner(
          .milliseconds
 
    @Suppress("ThrowsCount") // Each notification failure maps to an explicit companion result.
-   private suspend fun runNotification(bundle: Bundle): InteractiveTaskerResult {
+   private fun runNotification(bundle: Bundle): InteractiveTaskerResult {
       val request = NotificationRequest.fromBundle(bundle)
       logcat {
          "Tasker notification request: title='${request.title}', bodyLength=${request.body.length}, " +
@@ -96,7 +96,7 @@ class TaskerActionRunner(
       // Duration/vibration are validated above but intentionally unused here: Catapult posts an
       // ordinary phone notification and lets the Pebble companion app mirror it to the watch, so
       // the watch's own notification behaviour (dismissal, history) applies.
-      val result = watchNotificationSender.sendNotification(request.title, request.body)
+      val result = watchNotificationSender.sendNotification(title = request.title, body = request.body)
 
       when (result) {
          NotificationSendResult.MISSING_PERMISSION -> {

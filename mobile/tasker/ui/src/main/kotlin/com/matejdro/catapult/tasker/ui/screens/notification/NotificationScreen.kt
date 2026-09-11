@@ -57,9 +57,9 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
       var error by remember { mutableStateOf<String?>(null) }
 
       fun save() {
-         val durationMs = duration.toLongOrNull()?.times(MILLISECONDS_PER_SECOND)
          error = validateNotification(title, duration)
          if (error != null) return
+         val durationMs = requireNotNull(duration.toLongOrNull()) * MILLISECONDS_PER_SECOND
 
          Log.d(
             "CatapultTasker",
@@ -70,7 +70,7 @@ class NotificationScreen : Screen<NotificationScreenKey>() {
                putString(BundleKeys.ACTION, TaskerAction.SEND_NOTIFICATION.name)
                putString(BundleKeys.TITLE, title)
                putString(BundleKeys.MESSAGE, body)
-               putLong(BundleKeys.NOTIFICATION_DURATION_MS, durationMs!!)
+               putLong(BundleKeys.NOTIFICATION_DURATION_MS, durationMs)
                putString(TaskerPluginConstants.VARIABLE_REPLACE_KEYS, "%catapult_status")
             },
             title,

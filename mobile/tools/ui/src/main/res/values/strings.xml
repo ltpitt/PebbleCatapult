@@ -18,5 +18,4 @@
     <string name="notification_test_send">Send to watch</string>
     <string name="notification_test_success">Notification sent successfully. Check the watch.</string>
     <string name="notification_test_no_permissions">Failed: notifications are disabled for Catapult.</string>
-    <string name="notification_test_error">Failed: %1$s</string>
 </resources>
