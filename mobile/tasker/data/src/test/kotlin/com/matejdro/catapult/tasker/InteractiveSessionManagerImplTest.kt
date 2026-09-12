@@ -338,9 +338,10 @@ class InteractiveSessionManagerImplTest {
          InteractiveTaskerResult.Failed("send failed")
    }
 
-   private fun newManager(registerSender: Boolean = true) = InteractiveSessionManagerImpl(timeout = 1.seconds).also {
-      if (registerSender) {
-         it.registerSender(InteractiveRequestSender { _, _ -> })
+   private fun newManager(registerSender: Boolean = true) =
+      InteractiveSessionManagerImpl(timeout = 1.seconds).also { manager ->
+         if (registerSender) {
+            manager.registerSender(InteractiveRequestSender { _, _ -> })
+         }
       }
-   }
 }
