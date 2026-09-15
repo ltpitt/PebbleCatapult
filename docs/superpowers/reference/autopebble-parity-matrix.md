@@ -25,8 +25,8 @@ vocabulary) live in [`protocol-and-results.md`](protocol-and-results.md).
 | Dynamic show/hide actions | Built | — | Enabled flag synced per action. |
 | Voice argument for an action | Built | — | Watch voice dictation passed as a task argument. |
 | Timeline pin creation/deletion | Built | — | Tasker `CREATE_PIN` / `DELETE_PIN` actions. |
-| Interactive list selection | Built | [interactive-tasker-sessions](../specs/2026-09-03-interactive-tasker-sessions-design.md) | `SHOW_LIST` screen variant. |
-| Confirmation dialog | Built | [interactive-tasker-sessions](../specs/2026-09-03-interactive-tasker-sessions-design.md) | `SHOW_CONFIRMATION` screen variant. |
+| Interactive list selection | Built | [protocol and results](protocol-and-results.md) | `SHOW_LIST` screen variant. |
+| Confirmation dialog | Built | [protocol and results](protocol-and-results.md) | `SHOW_CONFIRMATION` screen variant. |
 | Watch notification | Built | — | Posts an ordinary Android notification mirrored to the watch by the Pebble companion app (Tasker `SEND_NOTIFICATION` and the in-app notification test tool). |
 | Quick-action screen (Up/Select/Down) | Planned | [quick-action-screens](../specs/2026-09-04-quick-action-screens-design.md) | `quick` screen variant. |
 | Text/detail screen (scrollable) | Planned | [detail-text-screens](../specs/2026-09-04-detail-text-screens-design.md) | `text` screen variant. |
