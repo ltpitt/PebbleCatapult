@@ -206,6 +206,21 @@ class TaskerActionRunnerTest {
    }
 
    @Test
+   fun `Reject unexpanded interactive list Tasker variable placeholder`() = scope.runTest {
+      val error = shouldThrow<TaskerInvalidInputException> {
+         runner.run(
+            Bundle().apply {
+               putString(BundleKeys.ACTION, TaskerAction.SHOW_LIST.name)
+               putString(BundleKeys.TITLE, "Choose")
+               putString(BundleKeys.ITEMS, "%variable_name")
+            },
+         )
+      }
+
+      error shouldHaveMessage "Items must be a JSON array of objects with non-blank id and value"
+   }
+
+   @Test
    fun `Zero interactive timeout uses the default`() = scope.runTest {
       runner.run(
          Bundle().apply {

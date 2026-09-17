@@ -84,14 +84,20 @@ abstract class TaskerConfigurationActivity : ComponentActivity() {
       requestedTimeoutMs: Int? = null,
       relevantVariables: Array<String>? = null,
    ) {
+      val variableReplaceKeys = extractVariableReplaceKeys(bundle)
       val intent = Intent().apply {
          putExtra(TaskerPluginConstants.EXTRA_STRING_BLURB, message)
          putExtra(TaskerPluginConstants.EXTRA_BUNDLE, bundle)
          requestedTimeoutMs?.let { putExtra(TaskerPluginConstants.REQUESTED_TIMEOUT, it) }
          relevantVariables?.let { putExtra(TaskerPluginConstants.RELEVANT_VARIABLES, it) }
+         variableReplaceKeys?.let { putExtra(TaskerPluginConstants.VARIABLE_REPLACE_KEYS, it) }
       }
 
       setResult(RESULT_OK, intent)
       if (finish) finish()
    }
 }
+
+internal fun extractVariableReplaceKeys(bundle: Bundle): String? =
+   bundle.getString(TaskerPluginConstants.VARIABLE_REPLACE_KEYS)
+      ?.also { bundle.remove(TaskerPluginConstants.VARIABLE_REPLACE_KEYS) }

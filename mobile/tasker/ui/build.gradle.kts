@@ -22,6 +22,7 @@ dependencies {
    implementation(projects.commonCompose)
    implementation(projects.commonNavigation)
    implementation(projects.sharedResources)
+   implementation(projects.tasker.data)
    implementation(projects.tasker.api)
    implementation(libs.androidx.activity.compose)
    implementation(libs.kotlin.coroutines)
