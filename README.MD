@@ -47,6 +47,9 @@ Show a list or a confirmation dialog on the watch and let Tasker act on the
 answer. Only one interactive session can be active at a time; starting a new
 one cancels any previous one.
 
+The Show List title and items fields support Tasker variable replacement, so
+their contents can be supplied dynamically when the action runs.
+
 The action's result is returned to Tasker as these variables:
 
 | Variable | Meaning |

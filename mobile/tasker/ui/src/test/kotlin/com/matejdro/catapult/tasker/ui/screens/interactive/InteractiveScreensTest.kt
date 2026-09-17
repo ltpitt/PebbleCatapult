@@ -21,6 +21,11 @@ class InteractiveScreensTest {
    }
 
    @Test
+   fun `list configuration declares variable replacement for title and items`() {
+      interactiveListVariableReplacementKeys() shouldBe "TITLE ITEMS"
+   }
+
+   @Test
    fun `list configuration declares the selection result variables to Tasker`() {
       val names = interactiveListRelevantVariables().map { it.substringBefore('\n') }
 

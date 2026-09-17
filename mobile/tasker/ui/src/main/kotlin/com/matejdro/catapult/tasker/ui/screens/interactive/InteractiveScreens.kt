@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.matejdro.catapult.tasker.BundleKeys
 import com.matejdro.catapult.tasker.TaskerAction
+import com.matejdro.catapult.tasker.TaskerPluginConstants
 import com.matejdro.catapult.tasker.TaskerResultKeys
 import com.matejdro.catapult.tasker.ui.TaskerConfigurationActivity
 import kotlinx.serialization.Serializable
@@ -88,6 +89,10 @@ class InteractiveListScreen : Screen<InteractiveListScreenKey>() {
                      putString(BundleKeys.TITLE, title)
                      putString(BundleKeys.ITEMS, items)
                      putLong(BundleKeys.TIMEOUT_MS, timeout.toLongOrNull() ?: DEFAULT_TIMEOUT_MS)
+                     putString(
+                        TaskerPluginConstants.VARIABLE_REPLACE_KEYS,
+                        interactiveListVariableReplacementKeys(),
+                     )
                   },
                   title,
                   finish = true,
@@ -149,6 +154,9 @@ internal fun listItems(savedItems: String?): String =
 
 internal fun listTimeout(savedTimeout: Long?): Long =
    savedTimeout ?: DEFAULT_TIMEOUT_MS
+
+internal fun interactiveListVariableReplacementKeys(): String =
+   listOf(BundleKeys.TITLE, BundleKeys.ITEMS).joinToString(" ")
 
 internal fun interactiveListRelevantVariables(): Array<String> = arrayOf(
    "${TaskerResultKeys.STATUS}\nCatapult status\nsuccess, cancelled, timeout or failed",
