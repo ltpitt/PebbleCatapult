@@ -181,7 +181,7 @@ jobs:
           java-version: '21'
           distribution: temurin
           cache: gradle
-      - uses: android-actions/setup-android@7c5672355aaa8fde5f97a91aa9a99616d1ace6bc
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
       # The Pebble SDK currently requires Python 3.13.
