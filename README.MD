@@ -1,56 +1,72 @@
 # Catapult for Pebble
 
-A watchapp for PebbleOS watches for interacting with the [Tasker](https://tasker.joaoapps.com/).
+<div align="center">
 
-Catapult is an AutoPebble-compatible successor. Its relationship to the original
-AutoPebble app — what is implemented, planned, or intentionally dropped — is
-tracked in the [AutoPebble parity matrix](docs/superpowers/reference/autopebble-parity-matrix.md).
+Control your Tasker actions from your Pebble watch.
 
-![](docs/demo.gif)
+[**Download the latest preview**](https://github.com/ltpitt/PebbleCatapult/releases/tag/debug-latest)
+·
+[**See the feature parity matrix**](docs/superpowers/reference/autopebble-parity-matrix.md)
 
-# Install
+</div>
 
-**Note: the old Pebble app is not supported. You have to use either the microPebble or the new Pebble/Core app.**
+![Catapult running on a Pebble watch](docs/demo.gif)
 
-## Android app
+## What is Catapult?
 
-[<img src="docs/badge_obtainium.png" alt="Get it on Obtainium">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/matejdro/PebbleCatapult)
-[<img src="docs/badge_github.png" alt="Get it on GitHub">](../../releases/latest)
+Catapult connects [Tasker](https://tasker.joaoapps.com/) with PebbleOS watches,
+so actions you already use on Android can be launched, organized, and answered
+from your wrist.
 
-## Watchapp
+This repository is a community fork of
+[PebbleCatapult](https://github.com/matejdro/PebbleCatapult), originally created
+and maintained by [@matejdro](https://github.com/matejdro). The foundation and
+original work deserve real credit and appreciation.
 
-[<img src="docs/badge_rebble.svg" alt="Get it on Rebble Store">](https://apps.rebble.io/en_US/application/69501540da1501000944b086)
-[<img src="docs/badge_github.png" alt="Get it on GitHub">](../../releases/latest)
+The current goal of this fork is practical feature parity with AutoPebble /
+Pebble Tasker. Progress is guided by user feedback, the maintainer's own needs,
+and available time. It is an ambitious direction rather than a promise that
+every historical feature will return. The
+[AutoPebble parity matrix](docs/superpowers/reference/autopebble-parity-matrix.md)
+shows what is built, planned, or intentionally not supported.
 
-# Features
+## Quick start
 
-#### Launch Tasker tasks from the watch
-Launch your favourite tasks directly from your watch
+The current download is a rolling preview. It is convenient for trying the
+latest fork, but it is not a stable release channel.
 
-#### Subfolders
-Organise your tasks however you want
+1. Open the [latest preview release](https://github.com/ltpitt/PebbleCatapult/releases/tag/debug-latest).
+2. Download both assets:
+   - `catapult-mobile.apk` - the Android app.
+   - `catapult-watchapp.pbw` - the Pebble watchapp.
+3. Install the APK on your Android phone.
+4. Install the PBW through a supported Pebble companion app, then open Catapult
+   and sync your Tasker actions.
 
-#### Faaast
-List of tasks is cached on the watch, so you don't need to wait for the app to load, you can browse and trigger your tasks immediately
+The legacy Pebble app is not supported. Use
+[microPebble](https://github.com/matejdro/microPebble) or the new
+Pebble/Core app instead.
 
-#### Dynamically show/hide actions
-You can use Tasker to dynamically show/hide actions from the watch. For example, hide all of your home automation actions when you are not home.
+## What works today
 
-#### Voice input
-You can input text into tasks via watch's microphone
+Catapult currently supports:
 
-#### Timeline pin creation
-"Launch" timeline pins from Tasker onto the watch
+- **Launch and organize:** launch Tasker actions from the watch, use nested
+  folders, and browse cached actions even when the phone is not immediately
+  available.
+- **Dynamic action lists:** show or hide actions from Tasker based on the
+  current context.
+- **Input and notifications:** pass voice input from the watch to a Tasker
+  action, create or delete timeline pins, and send watch notifications.
+- **Interactive sessions:** show a list or confirmation dialog on the watch and
+  return the user's answer to Tasker. Show List titles and items can use Tasker
+  variable replacement.
+- **Pebble Time Round:** the watchapp includes the `chalk` target alongside the
+  other supported PebbleOS targets.
 
-#### Interactive Tasker sessions
-Show a list or a confirmation dialog on the watch and let Tasker act on the
-answer. Only one interactive session can be active at a time; starting a new
-one cancels any previous one.
+## Interactive Tasker results
 
-The Show List title and items fields support Tasker variable replacement, so
-their contents can be supplied dynamically when the action runs.
-
-The action's result is returned to Tasker as these variables:
+Interactive actions return these local variables to Tasker:
 
 | Variable | Meaning |
 | --- | --- |
@@ -58,11 +74,23 @@ The action's result is returned to Tasker as these variables:
 | `%catapult_result_id` | Selected item's ID (list selection only) |
 | `%catapult_result_value` | Selected item's value (list selection only) |
 
-Example: an "Ask for a location" task supplies a CSV of saved locations as a
-list, the user picks one on the watch, and a follow-up "If `%catapult_status`
-~ `success`" task opens Google Maps with
-`geo:0,0?q=%catapult_result_value(%catapult_result_id)`.
+For example, an "Ask for a location" task can show a CSV of saved locations,
+then use a follow-up Tasker condition:
 
-# Contributing
+```text
+If %catapult_status ~ success
+    Open Google Maps:
+    geo:0,0?q=%catapult_result_value(%catapult_result_id)
+```
 
-See [CONTRIBUTING](CONTRIBUTING.MD)
+## Project links
+
+- [Latest preview release](https://github.com/ltpitt/PebbleCatapult/releases/tag/debug-latest)
+- [AutoPebble parity matrix](docs/superpowers/reference/autopebble-parity-matrix.md)
+- [Release and build notes](RELEASING.md)
+- [Contributing](CONTRIBUTING.MD)
+
+## Contributing
+
+Bug reports, feedback, and contributions are welcome. See the
+[contribution guide](CONTRIBUTING.MD) for the project workflow.
