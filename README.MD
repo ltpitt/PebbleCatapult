@@ -53,6 +53,16 @@ Create or edit a Tasker task, add an action, and choose **Plugin > Catapult**.
 Catapult's actions are configured in their own screen and run when the Tasker
 task reaches them.
 
+### Use Tasker variables
+
+**Show list** supports Tasker variable replacement in its **Title** and
+**Items** fields. For example, if `%locations` contains the JSON array, enter
+`%locations` in **Items** and Tasker will provide the list when the task runs.
+
+The **Send notification** action does not currently declare its **Title** or
+**Body** fields for variable replacement. Use literal text in those fields for
+now.
+
 ### Send a notification
 
 Choose **Send notification**, then fill in:
@@ -87,6 +97,15 @@ variables in the next action. The title and items fields support Tasker
 variable replacement, so a list can be assembled when the task runs. See
 [Interactive Tasker results](#interactive-tasker-results) for the result
 variables and a follow-up example.
+
+### Add voice input to a Tasker action
+
+When you add or edit a Tasker action in Catapult, enable **Pass voice input as
+%par1**. Save the action and sync it to the watch.
+
+When you select that action on the watch, speak when prompted. Tasker receives
+the transcription as `%par1`, which you can use in the task's next actions.
+For example, a task can use `%par1` as the text for a search, message, or note.
 
 ## What works today
 
