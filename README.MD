@@ -40,12 +40,43 @@ latest fork, but it is not a stable release channel.
    - `catapult-mobile.apk` - the Android app.
    - `catapult-watchapp.pbw` - the Pebble watchapp.
 3. Install the APK on your Android phone.
-4. Install the PBW through a supported Pebble companion app, then open Catapult
-   and sync your Tasker actions.
+4. Install the PBW through a supported Pebble companion app, then open Catapult.
 
 The legacy Pebble app is not supported. Use
 [microPebble](https://github.com/matejdro/microPebble) or the new
 Pebble/Core app instead.
+
+## Use the Catapult app
+
+The Android app is where you prepare the menu on your watch. Use it to choose
+Tasker tasks, group them into directories, control which actions are visible,
+and check the available tools. The Tasker plugin is used later, when a task
+runs.
+
+### Build the watch menu
+
+1. Open the **Directories** tab and select the directory where you want the
+   action.
+2. Tap **+**, choose **Tasker task**, and select a task from Tasker.
+3. Set the label that should appear on the watch, then save it.
+4. Use the switch beside an action to show or hide it on the watch.
+5. To create a directory, tap **+** in the **Directories** tab. To add an
+   existing directory inside another one, open the parent directory, tap **+**,
+   and choose **Open Directory**.
+
+When the phone and watch are connected, Catapult syncs changes to the watch.
+When you add or edit a Tasker action, you can also enable
+[voice input](#add-voice-input-to-a-tasker-action).
+
+### Use the Tools tab
+
+The **Tools** tab provides:
+
+- **Permissions** - open the permission setup screen.
+- **Notification test** - send a normal phone notification without using
+  Tasker. Use it to check notification delivery to the watch.
+- **Read today's logs** - inspect the logs from the current day.
+- **Save logs** - create a ZIP file that you can share when reporting a problem.
 
 ## Use Catapult from Tasker
 
