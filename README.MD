@@ -47,6 +47,47 @@ The legacy Pebble app is not supported. Use
 [microPebble](https://github.com/matejdro/microPebble) or the new
 Pebble/Core app instead.
 
+## Use Catapult from Tasker
+
+Create or edit a Tasker task, add an action, and choose **Plugin > Catapult**.
+Catapult's actions are configured in their own screen and run when the Tasker
+task reaches them.
+
+### Send a notification
+
+Choose **Send notification**, then fill in:
+
+- **Title** - required text shown as the notification title.
+- **Body** - the notification message.
+- **Duration (seconds)** - an optional action setting; the delivered notification
+  follows the normal Android and Pebble companion notification behavior.
+
+Save the action and run the task. Catapult posts a normal Android notification,
+which the Pebble companion app mirrors to the watch. It pops up, can be
+dismissed, and remains in the watch's notification history. Make sure Android
+notifications are enabled for Catapult.
+
+### Show a list
+
+Choose **Show list**, then configure:
+
+- **Title** - the heading shown on the watch.
+- **Items** - a JSON array containing an `id` and display `value` for each item.
+- **Timeout (milliseconds)** - how long to wait for a selection; for example,
+  `60000` waits for 60 seconds.
+
+For example:
+
+```json
+[{"id":"home","value":"Home"},{"id":"work","value":"Work"},{"id":"other","value":"Other"}]
+```
+
+Run the task, select an item on the watch, and use the returned Tasker
+variables in the next action. The title and items fields support Tasker
+variable replacement, so a list can be assembled when the task runs. See
+[Interactive Tasker results](#interactive-tasker-results) for the result
+variables and a follow-up example.
+
 ## What works today
 
 Catapult currently supports:
